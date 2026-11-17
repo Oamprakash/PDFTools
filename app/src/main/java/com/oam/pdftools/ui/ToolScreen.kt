@@ -28,7 +28,8 @@ import java.util.UUID
 fun ToolScreen(op: String, back: () -> Unit) {
     val ctx = LocalContext.current
     val isImg = op == PdfWorker.IMG
-    val multi = op == PdfWorker.IMG || op == PdfWorker.MERGE
+    val isScan = op == PdfWorker.SCAN
+    val multi = op == PdfWorker.IMG || op == PdfWorker.MERGE || isScan
     val isPw = op == PdfWorker.PROTECT || op == PdfWorker.UNLOCK
     var password by remember { mutableStateOf<String?>(null) }
     val minItems = if (op == PdfWorker.MERGE) 2 else 1
@@ -40,6 +41,9 @@ fun ToolScreen(op: String, back: () -> Unit) {
     fun add(list: List<Uri>) { if (!multi) items.clear(); items += if (multi) list else list.take(1) }
     val pickImg = rememberLauncherForActivityResult(PickMultipleVisualMedia()) { add(it) }
     val pickPdf = rememberLauncherForActivityResult(OpenMultipleDocuments()) { add(it) }
+    var scanError by remember { mutableStateOf<String?>(null) }
+    val scan = rememberScanner(onError = { scanError = it }) { add(it) }
+    LaunchedEffect(Unit) { if (isScan && items.isEmpty()) scan() }
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         u ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -97,9 +101,11 @@ fun ToolScreen(op: String, back: () -> Unit) {
             if (srcSize != null && t != null && srcSize <= t * 1000L) Text("Already under ${kbLabel(t)}. It will be saved as is.")
         }
         if (isPw) PasswordInput(op == PdfWorker.PROTECT, items.firstOrNull()) { password = it }
+        scanError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         JobStatus(info)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({
+            if (isScan) OutlinedButton({ scanError = null; scan() }) { Text(if (items.isEmpty()) "Scan" else "Scan more") }
+            else OutlinedButton({
                 if (isImg) pickImg.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
                 else pickPdf.launch(arrayOf("application/pdf"))
             }) { Text(if (items.isEmpty()) "Select" else "Add more") }

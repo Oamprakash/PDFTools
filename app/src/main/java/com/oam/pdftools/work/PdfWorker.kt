@@ -23,7 +23,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         fun single(block: () -> Unit) = block().let { listOf(out) }
         runCatching {
             val outs = when (op) {
-                IMG -> single { ops.imagesToPdf(ins, out) }
+                IMG, SCAN -> single { ops.imagesToPdf(ins, out) }
                 MERGE -> single { ops.merge(ins, out) }
                 COMPRESS -> single {
                     val kb = inputData.getInt(TARGET_KB, 0)
@@ -74,7 +74,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val TO_IMAGE = "PDF to images"; const val DPI = "dpi"; const val PNG = "png"; const val MIME = "mime"
         const val PROTECT = "Protect PDF"; const val UNLOCK = "Unlock PDF"; const val PW_KEY = "pwKey"
-        const val ID_CARD = "ID card to PDF"
+        const val ID_CARD = "ID card to PDF"; const val SCAN = "Scan document"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"
 
