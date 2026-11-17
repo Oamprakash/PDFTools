@@ -74,7 +74,7 @@ fun PageGridScreen(op: String, back: () -> Unit) {
         }
         when {
             src == null -> Text("Select a PDF to start.")
-            thumbs == null -> Text("Can't open this PDF (it may be password-protected).", color = MaterialTheme.colorScheme.error)
+            thumbs == null -> Text("Can't open this PDF. If it's password-protected, use Unlock PDF first.", color = MaterialTheme.colorScheme.error)
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (isImage && sel.isEmpty()) "All ${thumbs.count} pages" else "${sel.size}/${thumbs.count} selected", Modifier.weight(1f))

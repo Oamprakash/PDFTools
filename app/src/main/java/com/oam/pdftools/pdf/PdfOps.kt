@@ -14,6 +14,9 @@ import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.*
 import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
+import com.tom_roush.pdfbox.pdmodel.encryption.AccessPermission
+import com.tom_roush.pdfbox.pdmodel.encryption.InvalidPasswordException
+import com.tom_roush.pdfbox.pdmodel.encryption.StandardProtectionPolicy
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import java.io.File
@@ -79,6 +82,25 @@ class PdfOps(private val cr: ContentResolver) {
                 }
             }
         }
+    }
+
+    enum class Lock { NONE, OWNER_ONLY, PASSWORD }
+
+    fun lockState(src: Uri): Lock = try {
+        load(src).use { if (it.isEncrypted) Lock.OWNER_ONLY else Lock.NONE }
+    } catch (e: InvalidPasswordException) { Lock.PASSWORD }
+
+    /** AES-256; same password opens the file and unlocks all permissions. */
+    fun protect(src: Uri, out: Uri, password: String) = load(src).use { d ->
+        d.protect(StandardProtectionPolicy(password, password, AccessPermission()).apply { encryptionKeyLength = 256 })
+        save(d, out)
+    }
+
+    /** Removes the password (blank works for PDFs that only restrict editing/printing). */
+    fun unlock(src: Uri, out: Uri, password: String) {
+        val d = try { cr.openInputStream(src)!!.use { PDDocument.load(it, password, mem) } }
+                catch (e: InvalidPasswordException) { throw IllegalArgumentException("Wrong password") }
+        d.use { it.isAllSecurityToBeRemoved = true; save(it, out) }
     }
 
     /** pages are 0-based. */

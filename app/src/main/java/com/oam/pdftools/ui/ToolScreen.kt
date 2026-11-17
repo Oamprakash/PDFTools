@@ -28,7 +28,9 @@ import java.util.UUID
 fun ToolScreen(op: String, back: () -> Unit) {
     val ctx = LocalContext.current
     val isImg = op == PdfWorker.IMG
-    val multi = op != PdfWorker.COMPRESS
+    val multi = op == PdfWorker.IMG || op == PdfWorker.MERGE
+    val isPw = op == PdfWorker.PROTECT || op == PdfWorker.UNLOCK
+    var password by remember { mutableStateOf<String?>(null) }
     val minItems = if (op == PdfWorker.MERGE) 2 else 1
     val items = remember { mutableStateListOf<Uri>().apply { addAll(if (multi) Incoming.uris else Incoming.uris.take(1)) } }
     var targetKb by remember { mutableStateOf<Int?>(null) }
@@ -41,7 +43,11 @@ fun ToolScreen(op: String, back: () -> Unit) {
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         u ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        workId = PdfWorker.enqueue(ctx, op, items.toList(), u, targetKb?.let { mapOf(PdfWorker.TARGET_KB to it, PdfWorker.ALLOW_RASTER to allowRaster) } ?: emptyMap())
+        val extra = buildMap<String, Any> {
+            targetKb?.let { put(PdfWorker.TARGET_KB, it); put(PdfWorker.ALLOW_RASTER, allowRaster) }
+            password?.let { put(PdfWorker.PW_KEY, Secrets.put(it)) }
+        }
+        workId = PdfWorker.enqueue(ctx, op, items.toList(), u, extra)
     }
     val info by remember(workId) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
@@ -90,6 +96,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
             val t = targetKb
             if (srcSize != null && t != null && srcSize <= t * 1000L) Text("Already under ${kbLabel(t)}. It will be saved as is.")
         }
+        if (isPw) PasswordInput(op == PdfWorker.PROTECT, items.firstOrNull()) { password = it }
         JobStatus(info)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton({
@@ -98,7 +105,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
             }) { Text(if (items.isEmpty()) "Select" else "Add more") }
             // TODO ad: if items exceed free limit → rewarded ad gate
             Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") },
-                enabled = items.size >= minItems && state != WorkInfo.State.RUNNING) { Text("Create PDF") }
+                enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text("Create PDF") }
         }
     }
 }

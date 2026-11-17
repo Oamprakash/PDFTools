@@ -67,7 +67,7 @@ fun SplitScreen(back: () -> Unit) {
         }
         when {
             src == null -> Text("Select a PDF to start.")
-            count == null -> Text("Can't open this PDF (it may be password-protected).", color = MaterialTheme.colorScheme.error)
+            count == null -> Text("Can't open this PDF. If it's password-protected, use Unlock PDF first.", color = MaterialTheme.colorScheme.error)
             else -> {
                 Text("$name · $count pages")
                 Row(verticalAlignment = Alignment.CenterVertically) {

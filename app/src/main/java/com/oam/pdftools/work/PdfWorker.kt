@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import androidx.work.*
 import com.oam.pdftools.App
+import com.oam.pdftools.Secrets
 import com.oam.pdftools.data.Recent
 import com.oam.pdftools.fileMeta
 import com.oam.pdftools.pdf.PdfOps
@@ -44,6 +45,8 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                     ops.toImages(ins[0], pages().ifEmpty { null }, out, applicationContext.fileMeta(ins[0]).first.substringBeforeLast('.'),
                         inputData.getInt(DPI, 150), png)
                 }
+                PROTECT -> single { ops.protect(ins[0], out, password()) }
+                UNLOCK -> single { ops.unlock(ins[0], out, password()) }
                 SPLIT -> ops.split(ins[0], ranges(), out, applicationContext.fileMeta(ins[0]).first.substringBeforeLast('.'))
                 else -> error("Unknown op $op")
             }
@@ -60,6 +63,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         }.fold({ Result.success(it) }, { Result.failure(workDataOf("err" to it.message)) })
     }
 
+    private fun password() = Secrets.take(inputData.getString(PW_KEY)) ?: error("Session expired. Please try again.")
     private fun pages() = inputData.getIntArray(PAGES)!!.toList()
     private fun ranges() = inputData.getIntArray(RANGES)!!.toList().chunked(2).map { it[0]..it[1] }
 
@@ -68,6 +72,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val TO_IMAGE = "PDF to images"; const val DPI = "dpi"; const val PNG = "png"; const val MIME = "mime"
+        const val PROTECT = "Protect PDF"; const val UNLOCK = "Unlock PDF"; const val PW_KEY = "pwKey"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"
 
