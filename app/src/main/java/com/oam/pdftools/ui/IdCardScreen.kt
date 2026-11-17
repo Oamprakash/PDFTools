@@ -37,8 +37,10 @@ fun IdCardScreen(back: () -> Unit) {
 
     val scanFront = rememberScanner(1, { error = it }) { front = it.firstOrNull() ?: front }
     val scanBack = rememberScanner(1, { error = it }) { rear = it.firstOrNull() ?: rear }
+    // Gallery only as a fallback when the scanner can't run; the scanner has its own gallery import (which still crops/filters)
     val pickFront = rememberLauncherForActivityResult(PickVisualMedia()) { if (it != null) front = it }
     val pickBack = rememberLauncherForActivityResult(PickVisualMedia()) { if (it != null) rear = it }
+    val fallback = error != null
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         val f = front ?: return@rememberLauncherForActivityResult; u ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -55,8 +57,10 @@ fun IdCardScreen(back: () -> Unit) {
             Text(PdfWorker.ID_CARD, style = MaterialTheme.typography.titleLarge)
         }
         Text("Both sides go on one A4 page at real card size (85.6 × 54 mm), ready to print.", style = MaterialTheme.typography.bodySmall)
-        CardSlot("Front", front, scanFront, { pickFront.launch(img) }) { front = null }
-        CardSlot("Back (optional)", rear, scanBack, { pickBack.launch(img) }) { rear = null }
+        Text("Tap Scan. To use a photo you already have, tap the gallery icon inside the scanner; it will still be cropped and cleaned up.",
+            style = MaterialTheme.typography.bodySmall)
+        CardSlot("Front", front, scanFront, if (fallback) ({ pickFront.launch(img) }) else null) { front = null }
+        CardSlot("Back (optional)", rear, scanBack, if (fallback) ({ pickBack.launch(img) }) else null) { rear = null }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         Spacer(Modifier.weight(1f))
         JobStatus(info)
@@ -66,7 +70,7 @@ fun IdCardScreen(back: () -> Unit) {
 }
 
 @Composable
-private fun CardSlot(label: String, uri: Uri?, scan: () -> Unit, pick: () -> Unit, clear: () -> Unit) {
+private fun CardSlot(label: String, uri: Uri?, scan: () -> Unit, pick: (() -> Unit)?, clear: () -> Unit) {
     val ctx = LocalContext.current
     val bmp by produceState<Bitmap?>(null, uri) {
         value = uri?.let { withContext(Dispatchers.IO) { runCatching { ctx.thumb(it) }.getOrNull() } }
@@ -80,8 +84,8 @@ private fun CardSlot(label: String, uri: Uri?, scan: () -> Unit, pick: () -> Uni
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.titleSmall)
                 Row {
-                    TextButton(scan) { Text("Scan") }
-                    TextButton(pick) { Text("Gallery") }
+                    TextButton(scan) { Text(if (uri == null) "Scan" else "Rescan") }
+                    if (pick != null) TextButton(pick) { Text("Gallery") }
                     if (uri != null) TextButton(clear) { Text("Remove") }
                 }
             }

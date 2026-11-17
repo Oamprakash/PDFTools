@@ -39,8 +39,6 @@ fun ToolScreen(op: String, back: () -> Unit) {
 
     fun add(list: List<Uri>) { if (!multi) items.clear(); items += if (multi) list else list.take(1) }
     val pickImg = rememberLauncherForActivityResult(PickMultipleVisualMedia()) { add(it) }
-    var scanError by remember { mutableStateOf<String?>(null) }
-    val scan = rememberScanner(onError = { scanError = it }) { add(it) }
     val pickPdf = rememberLauncherForActivityResult(OpenMultipleDocuments()) { add(it) }
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         u ?: return@rememberLauncherForActivityResult
@@ -100,13 +98,11 @@ fun ToolScreen(op: String, back: () -> Unit) {
         }
         if (isPw) PasswordInput(op == PdfWorker.PROTECT, items.firstOrNull()) { password = it }
         JobStatus(info)
-        scanError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (isImg) OutlinedButton({ scanError = null; scan() }) { Text("Scan") }
             OutlinedButton({
                 if (isImg) pickImg.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
                 else pickPdf.launch(arrayOf("application/pdf"))
-            }) { Text(if (isImg) "Gallery" else if (items.isEmpty()) "Select" else "Add more") }
+            }) { Text(if (items.isEmpty()) "Select" else "Add more") }
             // TODO ad: if items exceed free limit → rewarded ad gate
             Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") },
                 enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text("Create PDF") }
