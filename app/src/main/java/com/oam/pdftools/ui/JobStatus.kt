@@ -15,7 +15,10 @@ import com.oam.pdftools.work.PdfWorker
 fun JobStatus(info: WorkInfo?) {
     val ctx = LocalContext.current
     when (info?.state) {
-        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> LinearProgressIndicator(Modifier.fillMaxWidth())
+        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            LinearProgressIndicator(Modifier.fillMaxWidth())
+            info.progress.getString(PdfWorker.STEP)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+        }
         WorkInfo.State.SUCCEEDED -> {
             // TODO ad: capped interstitial here (skip first 2 tasks, ≥ 3–4 min apart)
             val d = info.outputData

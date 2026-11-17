@@ -29,7 +29,9 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                     if (kb <= 0) ops.compress(ins[0], out)
                     else {
                         // 1 KB = 1000 bytes here: stays under the limit whether a portal counts 1000 or 1024
-                        val r = ops.compressToTarget(ins[0], out, kb * 1000L, File(applicationContext.cacheDir, "compress"))
+                        val r = ops.compressToTarget(ins[0], out, kb * 1000L, File(applicationContext.cacheDir, "compress")) {
+                            setProgressAsync(workDataOf(STEP to it))
+                        }
                         extra = workDataOf(TARGET_KB to kb, HIT to r.hit, RASTER to (r.mode == PdfOps.Mode.RASTER))
                     }
                 }
@@ -52,7 +54,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     private fun ranges() = inputData.getIntArray(RANGES)!!.toList().chunked(2).map { it[0]..it[1] }
 
     companion object {
-        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"
+        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val STEP = "step"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"
         const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"

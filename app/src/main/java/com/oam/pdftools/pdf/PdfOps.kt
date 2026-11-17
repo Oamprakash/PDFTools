@@ -73,30 +73,66 @@ class PdfOps(private val cr: ContentResolver) {
     data class TargetResult(val hit: Boolean, val mode: Mode)
 
     /**
-     * Tries progressively stronger settings until the file fits [target] bytes:
-     * first image recompression (text stays selectable), then full-page rasterising.
-     * Always writes the smallest result to [out]; hit=false means the target was not reachable.
+     * Compress until the file fits [target] bytes, with few full passes:
+     * 1. Try settings on 3 sample pages (first/middle/last) and predict the full size.
+     * 2. Binary-search the ladder for the mildest setting predicted to fit (8% margin).
+     * 3. Run it on the whole file; if it misses, correct the prediction and jump ahead.
+     * Image recompression (text stays selectable) is tried before page rasterising.
+     * Always writes the smallest result to [out]; hit=false means the target wasn't reachable.
      */
-    fun compressToTarget(src: Uri, out: Uri, target: Long, tmp: File): TargetResult {
+    fun compressToTarget(src: Uri, out: Uri, target: Long, tmp: File, onStep: (String) -> Unit = {}): TargetResult {
         tmp.deleteRecursively(); tmp.mkdirs()
         val orig = File(tmp, "orig.pdf").also { f -> cr.openInputStream(src)!!.use { i -> f.outputStream().use { i.copyTo(it) } } }
-        var best = orig; var mode = Mode.ORIGINAL
-        fun attempt(m: Mode, name: String, block: (File) -> Unit): Boolean {
-            val f = File(tmp, name); block(f)
-            if (f.length() < best.length()) { if (best != orig) best.delete(); best = f; mode = m } else f.delete()
-            return best.length() <= target
+        var best = orig; var mode = Mode.ORIGINAL; var n = 0
+        fun finish(hit: Boolean): TargetResult {
+            cr.openOutputStream(out, "wt")!!.use { o -> best.inputStream().use { it.copyTo(o) } }
+            tmp.deleteRecursively()
+            return TargetResult(hit, mode)
         }
-        val hasImages = PDDocument.load(orig, mem).use { d ->
-            d.pages.any { p -> p.resources?.let { r -> r.xObjectNames.any { r.getXObject(it) is PDImageXObject } } == true }
+        if (orig.length() <= target) return finish(true)
+
+        onStep("Analysing sample pages…")
+        val (pages, hasImages) = PDDocument.load(orig, mem).use { d ->
+            d.numberOfPages to d.pages.any { p -> p.resources?.let { r -> r.xObjectNames.any { r.getXObject(it) is PDImageXObject } } == true }
         }
-        val hit = best.length() <= target ||
-            (hasImages && LIGHT.withIndex().any { (n, s) ->
-                attempt(Mode.IMAGES, "l$n.pdf") { f -> PDDocument.load(orig, mem).use { d -> recompressImages(d, s.first, s.second); d.save(f) } }
-            }) ||
-            RASTER.withIndex().any { (n, s) -> attempt(Mode.RASTER, "r$n.pdf") { f -> rasterize(orig, f, s.first, s.second) } }
-        cr.openOutputStream(out, "wt")!!.use { o -> best.inputStream().use { it.copyTo(o) } }
-        tmp.deleteRecursively()
-        return TargetResult(hit, mode)
+        val sample = if (pages <= 4) orig else File(tmp, "sample.pdf").also { f ->
+            PDDocument.load(orig, mem).use { s ->
+                PDDocument().use { d -> listOf(0, pages / 2, pages - 1).forEach { d.importPage(s.getPage(it)) }; d.save(f) }
+            }
+        }
+        val goal = (target * 0.92).toLong()
+
+        fun apply(m: Mode, s: Pair<Int, Float>, input: File, output: File) =
+            if (m == Mode.IMAGES) PDDocument.load(input, mem).use { d -> recompressImages(d, s.first, s.second); d.save(output) }
+            else rasterize(input, output, s.first, s.second)
+
+        fun search(m: Mode, ladder: List<Pair<Int, Float>>, forceLast: Boolean): Boolean {
+            val cache = HashMap<Int, Long>()
+            fun predict(i: Int) = cache.getOrPut(i) {
+                val f = File(tmp, "s.pdf"); apply(m, ladder[i], sample, f)
+                (orig.length() * f.length().toDouble() / sample.length()).toLong().also { f.delete() }
+            }
+            val last = ladder.lastIndex
+            var i = if (predict(last) > goal) { if (!forceLast) return false; last } else {
+                var lo = 0; var hi = last
+                while (lo < hi) { val mid = (lo + hi) / 2; if (predict(mid) <= goal) hi = mid else lo = mid + 1 }
+                lo
+            }
+            while (true) {
+                n++
+                onStep(if (m == Mode.RASTER) "Converting pages to images (pass $n)…" else "Compressing images (pass $n)…")
+                val f = File(tmp, "full$n.pdf"); apply(m, ladder[i], orig, f)
+                val size = f.length()
+                if (size < best.length()) { if (best != orig) best.delete(); best = f; mode = m } else f.delete()
+                if (size <= target) return true
+                if (i == last) return false
+                val factor = size / predict(i).toDouble() // how far off the sample prediction was
+                i = ((i + 1)..last).firstOrNull { predict(it) * factor <= goal } ?: last
+            }
+        }
+
+        val hit = (hasImages && search(Mode.IMAGES, LIGHT, forceLast = false)) || search(Mode.RASTER, RASTER, forceLast = true)
+        return finish(hit)
     }
 
     private fun recompressImages(d: PDDocument, maxPx: Int, quality: Float) {
