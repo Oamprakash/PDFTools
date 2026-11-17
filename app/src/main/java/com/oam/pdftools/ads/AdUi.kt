@@ -13,7 +13,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import android.content.pm.ApplicationInfo
+import android.util.Log
+import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdLoader
+import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
@@ -41,14 +45,27 @@ fun rememberRewardGate(): (Boolean, String, () -> Unit) -> Unit {
 fun NativeAdCard(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     var ad by remember { mutableStateOf<NativeAd?>(null) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val debug = (ctx.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     DisposableEffect(Unit) {
+        Log.d("Ads", "Native: loading ${Ads.NATIVE}")
         AdLoader.Builder(ctx, Ads.NATIVE)
-            .forNativeAd { ad = it }
+            .forNativeAd { Log.d("Ads", "Native: loaded"); ad = it }
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(e: LoadAdError) {
+                    Log.w("Ads", "Native failed: code=${e.code} ${e.message} | ${e.responseInfo}")
+                    error = "code ${e.code}: ${e.message}"
+                }
+            })
             .withNativeAdOptions(NativeAdOptions.Builder().setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT).build())
             .build().loadAd(AdRequest.Builder().build())
         onDispose { ad?.destroy() }
     }
-    val a = ad ?: return
+    val a = ad ?: run {
+        // Debug builds only: show why there's no ad instead of an empty gap
+        if (debug && error != null) Text("Ad not loaded ($error)", modifier, style = MaterialTheme.typography.bodySmall)
+        return
+    }
     OutlinedCard(modifier.fillMaxWidth()) {
         AndroidView(::buildAdView, Modifier.fillMaxWidth()) { v -> bind(v, a) }
     }
@@ -76,7 +93,8 @@ private fun buildAdView(c: Context): NativeAdView {
         addView(icon); addView(texts); addView(cta)
     }
     return NativeAdView(c).apply {
-        addView(row); iconView = icon; headlineView = headline; bodyView = body; callToActionView = cta
+        layoutParams = android.view.ViewGroup.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, WRAP_CONTENT)
+        addView(row, android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, WRAP_CONTENT)); iconView = icon; headlineView = headline; bodyView = body; callToActionView = cta
     }
 }
 

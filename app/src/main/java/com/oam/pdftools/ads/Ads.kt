@@ -42,7 +42,7 @@ object Ads {
         app = ctx.applicationContext
         prefs = app.getSharedPreferences("ads", Context.MODE_PRIVATE)
         CoroutineScope(Dispatchers.IO).launch {
-            MobileAds.initialize(app) {}
+            MobileAds.initialize(app) { s -> android.util.Log.d("Ads", "Init: ${s.adapterStatusMap.mapValues { it.value.initializationState }}") }
             withContext(Dispatchers.Main) { loadInterstitial(); loadRewarded() }
         }
     }
@@ -51,12 +51,12 @@ object Ads {
 
     private fun loadInterstitial() = InterstitialAd.load(app, INTERSTITIAL, request(), object : InterstitialAdLoadCallback() {
         override fun onAdLoaded(ad: InterstitialAd) { interstitial = ad }
-        override fun onAdFailedToLoad(e: LoadAdError) { interstitial = null }
+        override fun onAdFailedToLoad(e: LoadAdError) { interstitial = null; android.util.Log.w("Ads", "Interstitial failed: ${e.code} ${e.message}") }
     })
 
     private fun loadRewarded() = RewardedAd.load(app, REWARDED, request(), object : RewardedAdLoadCallback() {
         override fun onAdLoaded(ad: RewardedAd) { rewarded = ad }
-        override fun onAdFailedToLoad(e: LoadAdError) { rewarded = null }
+        override fun onAdFailedToLoad(e: LoadAdError) { rewarded = null; android.util.Log.w("Ads", "Rewarded failed: ${e.code} ${e.message}") }
     })
 
     /** Call when a job succeeds. Counts the task once and maybe shows an interstitial. */
