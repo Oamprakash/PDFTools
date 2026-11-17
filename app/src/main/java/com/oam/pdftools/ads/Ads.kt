@@ -5,7 +5,13 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.SystemClock
 import com.google.android.gms.ads.*
+import androidx.compose.runtime.mutableStateOf
+import com.google.android.gms.ads.nativead.NativeAd
+import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.interstitial.InterstitialAd
+import androidx.compose.runtime.mutableStateOf
+import com.google.android.gms.ads.nativead.NativeAd
+import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
@@ -43,7 +49,7 @@ object Ads {
         prefs = app.getSharedPreferences("ads", Context.MODE_PRIVATE)
         CoroutineScope(Dispatchers.IO).launch {
             MobileAds.initialize(app) { s -> android.util.Log.d("Ads", "Init: ${s.adapterStatusMap.mapValues { it.value.initializationState }}") }
-            withContext(Dispatchers.Main) { loadInterstitial(); loadRewarded() }
+            withContext(Dispatchers.Main) { loadInterstitial(); loadRewarded(); loadNative() }
         }
     }
 
@@ -58,6 +64,38 @@ object Ads {
         override fun onAdLoaded(ad: RewardedAd) { rewarded = ad }
         override fun onAdFailedToLoad(e: LoadAdError) { rewarded = null; android.util.Log.w("Ads", "Rewarded failed: ${e.code} ${e.message}") }
     })
+
+    // One shared native ad, kept outside composition so list changes / navigation don't destroy and reload it.
+    val native = mutableStateOf<NativeAd?>(null)
+    val nativeError = mutableStateOf<String?>(null)
+    private var nativeAt = 0L
+    private var nativeLoading = false
+
+    private fun loadNative() {
+        if (nativeLoading) return
+        nativeLoading = true
+        android.util.Log.d("Ads", "Native: loading")
+        AdLoader.Builder(app, NATIVE)
+            .forNativeAd { ad ->
+                android.util.Log.d("Ads", "Native: loaded")
+                native.value?.destroy(); native.value = ad; nativeError.value = null
+                nativeAt = SystemClock.elapsedRealtime(); nativeLoading = false
+            }
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(e: LoadAdError) {
+                    android.util.Log.w("Ads", "Native failed: code=${e.code} ${e.message}")
+                    nativeError.value = "code ${e.code}: ${e.message}"; nativeLoading = false
+                }
+            })
+            .withNativeAdOptions(NativeAdOptions.Builder().setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT).build())
+            .build().loadAd(request())
+    }
+
+    /** Native ads expire after ~1 h; refresh when Home is shown and the ad is old or missing. */
+    fun refreshNativeIfStale() {
+        if (!::app.isInitialized) return
+        if (native.value == null || SystemClock.elapsedRealtime() - nativeAt > 50 * 60_000L) loadNative()
+    }
 
     /** Call when a job succeeds. Counts the task once and maybe shows an interstitial. */
     fun onTaskCompleted(activity: Activity, jobId: UUID) {

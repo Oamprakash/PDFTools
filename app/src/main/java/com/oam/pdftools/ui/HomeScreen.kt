@@ -23,16 +23,16 @@ fun HomeScreen(open: (String) -> Unit) {
     LazyColumn(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item { Text("PDF Tools", style = MaterialTheme.typography.headlineMedium) }
         items(tools) { t -> ElevatedCard(Modifier.fillMaxWidth().clickable { open(t) }) { Text(t, Modifier.padding(20.dp)) } }
-        if (recents.size < 3) item { NativeAdCard(Modifier.padding(top = 8.dp)) }
+        // One fixed slot between tools and Recent: always visible, never between files (no misclicks)
+        item(key = "ad") { NativeAdCard(Modifier.padding(top = 8.dp)) }
         item { Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp)) }
         if (recents.isEmpty()) item { Text("No files yet. Everything is processed on your phone.") }
-        itemsIndexed(recents, key = { _, r -> r.uri }) { i, r ->
+        items(recents, key = { it.uri }) { r ->
             ListItem(
                 headlineContent = { Text(r.name) },
                 supportingContent = { Text("${r.op} · ${r.size.kb()}") },
                 modifier = Modifier.clickable { ctx.openPdf(Uri.parse(r.uri)) }
             )
-            if (i == 2) NativeAdCard(Modifier.padding(vertical = 4.dp)) // position #4, own border + "Ad" badge
         }
     }
 }

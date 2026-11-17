@@ -44,30 +44,15 @@ fun rememberRewardGate(): (Boolean, String, () -> Unit) -> Unit {
 @Composable
 fun NativeAdCard(modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
-    var ad by remember { mutableStateOf<NativeAd?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
     val debug = (ctx.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-    DisposableEffect(Unit) {
-        Log.d("Ads", "Native: loading ${Ads.NATIVE}")
-        AdLoader.Builder(ctx, Ads.NATIVE)
-            .forNativeAd { Log.d("Ads", "Native: loaded"); ad = it }
-            .withAdListener(object : AdListener() {
-                override fun onAdFailedToLoad(e: LoadAdError) {
-                    Log.w("Ads", "Native failed: code=${e.code} ${e.message} | ${e.responseInfo}")
-                    error = "code ${e.code}: ${e.message}"
-                }
-            })
-            .withNativeAdOptions(NativeAdOptions.Builder().setAdChoicesPlacement(NativeAdOptions.ADCHOICES_TOP_RIGHT).build())
-            .build().loadAd(AdRequest.Builder().build())
-        onDispose { ad?.destroy() }
-    }
-    val a = ad ?: run {
+    LaunchedEffect(Unit) { Ads.refreshNativeIfStale() }
+    val a = Ads.native.value ?: run {
         // Debug builds only: show why there's no ad instead of an empty gap
-        if (debug && error != null) Text("Ad not loaded ($error)", modifier, style = MaterialTheme.typography.bodySmall)
+        Ads.nativeError.value?.let { if (debug) Text("Ad not loaded ($it)", modifier, style = MaterialTheme.typography.bodySmall) }
         return
     }
     OutlinedCard(modifier.fillMaxWidth()) {
-        AndroidView(::buildAdView, Modifier.fillMaxWidth()) { v -> bind(v, a) }
+        key(a) { AndroidView(::buildAdView, Modifier.fillMaxWidth()) { v -> bind(v, a) } }
     }
 }
 
