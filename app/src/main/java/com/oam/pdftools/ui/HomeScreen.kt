@@ -1,0 +1,36 @@
+package com.oam.pdftools.ui
+
+import android.net.Uri
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.oam.pdftools.*
+import com.oam.pdftools.work.PdfWorker
+
+private val tools = listOf(PdfWorker.IMG, PdfWorker.MERGE, PdfWorker.COMPRESS, PdfWorker.EXTRACT, PdfWorker.ROTATE)
+
+@Composable
+fun HomeScreen(open: (String) -> Unit) {
+    val ctx = LocalContext.current
+    val recents by remember { (ctx.applicationContext as App).db.recents().all() }.collectAsStateWithLifecycle(emptyList())
+    LazyColumn(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { Text("PDF Tools", style = MaterialTheme.typography.headlineMedium) }
+        items(tools) { t -> ElevatedCard(Modifier.fillMaxWidth().clickable { open(t) }) { Text(t, Modifier.padding(20.dp)) } }
+        // TODO ad: native ad card here (label it "Ad")
+        item { Text("Recent", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 16.dp)) }
+        if (recents.isEmpty()) item { Text("No files yet. Everything is processed on your phone.") }
+        items(recents, key = { it.uri }) { r ->
+            ListItem(
+                headlineContent = { Text(r.name) },
+                supportingContent = { Text("${r.op} · ${r.size.kb()}") },
+                modifier = Modifier.clickable { ctx.openPdf(Uri.parse(r.uri)) }
+            )
+        }
+    }
+}
