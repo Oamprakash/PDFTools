@@ -17,6 +17,7 @@ import com.tom_roush.pdfbox.pdmodel.common.PDRectangle
 import com.tom_roush.pdfbox.pdmodel.graphics.image.JPEGFactory
 import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import java.io.File
+import java.util.zip.Deflater
 
 /** All ops stream through temp files so big PDFs don't OOM on low-RAM phones. */
 class PdfOps(private val cr: ContentResolver) {
@@ -70,6 +71,37 @@ class PdfOps(private val cr: ContentResolver) {
 
     /** "Light" compression: recompress embedded images; text stays selectable. */
     fun compress(src: Uri, out: Uri) = load(src).use { deflateStreams(it); recompressImages(it, 1500, 0.6f); save(it, out) }
+
+    data class Analysis(val pages: Int, val imageBytes: Long, val minLossless: Long) {
+        val textOnly get() = imageBytes == 0L
+    }
+
+    /**
+     * Quick pre-check (no full rewrite): finds image bytes and estimates the smallest
+     * lossless size by deflating every 25th uncompressed stream and extrapolating.
+     */
+    fun analyze(src: Uri, size: Long): Analysis = load(src).use { d ->
+        var raw = 0L; var img = 0L; var sIn = 0L; var sOut = 0L; var n = 0
+        for (o in d.document.objects) {
+            val s = o.`object` as? COSStream ?: continue
+            when {
+                s.getCOSName(COSName.SUBTYPE) == COSName.IMAGE -> img += s.length
+                s.filters == null -> {
+                    raw += s.length
+                    if (n++ % 25 == 0) { val b = s.createInputStream().use { it.readBytes() }; sIn += b.size; sOut += deflatedSize(b) }
+                }
+            }
+        }
+        val ratio = if (sIn > 0) sOut.toDouble() / sIn else 1.0
+        Analysis(d.numberOfPages, img, (size - raw + raw * ratio).toLong().coerceAtMost(size))
+    }
+
+    private fun deflatedSize(b: ByteArray): Long {
+        val def = Deflater(Deflater.DEFAULT_COMPRESSION).apply { setInput(b); finish() }
+        val buf = ByteArray(8192); var t = 0L
+        while (!def.finished()) t += def.deflate(buf)
+        def.end(); return t
+    }
 
     enum class Mode { ORIGINAL, LOSSLESS, IMAGES, RASTER }
     data class TargetResult(val hit: Boolean, val mode: Mode)

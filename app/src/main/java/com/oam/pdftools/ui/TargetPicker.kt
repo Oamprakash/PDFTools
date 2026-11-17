@@ -13,13 +13,14 @@ import com.oam.pdftools.kbLabel
 
 /** null = standard compression; otherwise target size in KB. */
 @Composable
-fun TargetPicker(value: Int?, onChange: (Int?) -> Unit) {
+fun TargetPicker(value: Int?, minBytes: Long? = null, onChange: (Int?) -> Unit) {
     var custom by remember { mutableStateOf("") }
     Text("Target size", style = MaterialTheme.typography.titleSmall)
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(value == null, { custom = ""; onChange(null) }, { Text("Standard") })
         listOf(100, 200, 500, 1000, 2000).forEach { k ->
-            FilterChip(value == k && custom.isEmpty(), { custom = ""; onChange(k) }, { Text(kbLabel(k)) })
+            FilterChip(value == k && custom.isEmpty(), { custom = ""; onChange(k) }, { Text(kbLabel(k)) },
+                enabled = minBytes == null || k * 1000L >= minBytes) // greyed out: not reachable for this file
         }
     }
     OutlinedTextField(custom, { v -> custom = v.filter(Char::isDigit).take(6); custom.toIntOrNull()?.takeIf { it > 0 }?.let(onChange) },

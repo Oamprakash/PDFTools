@@ -16,7 +16,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.oam.pdftools.*
+import com.oam.pdftools.pdf.PdfOps
 import com.oam.pdftools.work.PdfWorker
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.flowOf
 import java.util.UUID
 
@@ -62,7 +65,24 @@ fun ToolScreen(op: String, back: () -> Unit) {
         }
         if (op == PdfWorker.COMPRESS) {
             val srcSize = remember(items.firstOrNull()) { items.firstOrNull()?.let { ctx.fileMeta(it).second } }
-            TargetPicker(targetKb) { targetKb = it }
+            val analysis by produceState<PdfOps.Analysis?>(null, items.firstOrNull()) {
+                value = null
+                val u = items.firstOrNull() ?: return@produceState
+                value = withContext(Dispatchers.IO) { runCatching { PdfOps(ctx.contentResolver).analyze(u, srcSize ?: 0) }.getOrNull() }
+            }
+            val a = analysis
+            val floor = a?.takeIf { it.textOnly }?.minLossless // only text-only files have a hard floor
+            when {
+                items.isEmpty() -> {}
+                a == null -> Text("Checking file…", style = MaterialTheme.typography.bodySmall)
+                floor != null -> Text("Text-only PDF · ${a.pages} pages. Smallest size without losing quality: about ${floor.kb()}",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            TargetPicker(targetKb, floor) { targetKb = it }
+            targetKb?.let { t ->
+                if (floor != null && t * 1000L < floor) Text("${kbLabel(t)} isn't realistic for this file. You'll get about ${floor.kb()}.",
+                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            }
             if (targetKb != null) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 Checkbox(allowRaster, { allowRaster = it })
                 Text("Allow lower quality (text may look blurry)", style = MaterialTheme.typography.bodySmall)
