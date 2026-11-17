@@ -22,6 +22,7 @@ import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.nativead.NativeAdView
+import com.oam.pdftools.billing.Billing
 import com.oam.pdftools.findActivity
 
 /** Asks before a batch that needs a rewarded ad. Usage: gate(needsReward, message) { proceed() } */
@@ -43,6 +44,7 @@ fun rememberRewardGate(): (Boolean, String, () -> Unit) -> Unit {
 /** Small native ad card with a clear "Ad" badge and its own border, so it can't be mistaken for a file. */
 @Composable
 fun NativeAdCard(modifier: Modifier = Modifier) {
+    if (Billing.adFree.value) return
     val ctx = LocalContext.current
     val debug = (ctx.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
     LaunchedEffect(Unit) { Ads.refreshNativeIfStale() }

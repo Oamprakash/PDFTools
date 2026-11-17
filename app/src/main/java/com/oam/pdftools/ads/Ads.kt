@@ -15,6 +15,7 @@ import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.oam.pdftools.billing.Billing
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.*
 import java.util.UUID
@@ -72,7 +73,7 @@ object Ads {
     private var nativeLoading = false
 
     private fun loadNative() {
-        if (nativeLoading) return
+        if (nativeLoading || Billing.adFree.value) return
         nativeLoading = true
         android.util.Log.d("Ads", "Native: loading")
         AdLoader.Builder(app, NATIVE)
@@ -99,7 +100,7 @@ object Ads {
 
     /** Call when a job succeeds. Counts the task once and maybe shows an interstitial. */
     fun onTaskCompleted(activity: Activity, jobId: UUID) {
-        if (!counted.add(jobId)) return
+        if (Billing.adFree.value || !counted.add(jobId)) return
         val n = prefs.getInt("tasks", 0) + 1
         prefs.edit().putInt("tasks", n).apply()
         val now = SystemClock.elapsedRealtime()
@@ -113,7 +114,7 @@ object Ads {
         ad.show(activity)
     }
 
-    fun needsReward(op: String, count: Int) = count > (FREE_LIMIT[op] ?: Int.MAX_VALUE)
+    fun needsReward(op: String, count: Int) = !Billing.adFree.value && count > (FREE_LIMIT[op] ?: Int.MAX_VALUE)
     fun gateText(op: String, count: Int) = "Up to ${FREE_LIMIT[op]} at once is free. Watch a short video to process all $count."
 
     /** Shows a rewarded ad; runs [onGranted] if earned, or right away if no ad is available. */

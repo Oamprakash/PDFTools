@@ -11,6 +11,7 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.*
 import com.oam.pdftools.Incoming
+import com.oam.pdftools.billing.Billing
 import com.oam.pdftools.importShared
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.launch
@@ -42,6 +43,8 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() { super.onResume(); Billing.refresh() }
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); handle(intent) }
 

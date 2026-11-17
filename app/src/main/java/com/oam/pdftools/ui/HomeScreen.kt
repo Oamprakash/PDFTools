@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oam.pdftools.*
 import com.oam.pdftools.ads.NativeAdCard
+import com.oam.pdftools.billing.RemoveAdsButton
 import com.oam.pdftools.work.PdfWorker
 
 private val tools = listOf(PdfWorker.SCAN, PdfWorker.IMG, PdfWorker.ID_CARD, PdfWorker.MERGE, PdfWorker.SPLIT, PdfWorker.COMPRESS, PdfWorker.EXTRACT, PdfWorker.ROTATE, PdfWorker.TO_IMAGE, PdfWorker.PROTECT, PdfWorker.UNLOCK)
@@ -21,7 +22,12 @@ fun HomeScreen(open: (String) -> Unit) {
     val ctx = LocalContext.current
     val recents by remember { (ctx.applicationContext as App).db.recents().all() }.collectAsStateWithLifecycle(emptyList())
     LazyColumn(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        item { Text("PDF Tools", style = MaterialTheme.typography.headlineMedium) }
+        item {
+            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("PDF Tools", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.weight(1f))
+                RemoveAdsButton()
+            }
+        }
         items(tools) { t -> ElevatedCard(Modifier.fillMaxWidth().clickable { open(t) }) { Text(t, Modifier.padding(20.dp)) } }
         // One fixed slot between tools and Recent: always visible, never between files (no misclicks)
         item(key = "ad") { NativeAdCard(Modifier.padding(top = 8.dp)) }
