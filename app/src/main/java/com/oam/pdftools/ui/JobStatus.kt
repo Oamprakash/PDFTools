@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
 import com.oam.pdftools.*
@@ -61,10 +62,13 @@ fun JobStatus(info: WorkInfo?) {
                         )
                     }
                     if (d.getBoolean(PdfWorker.RASTER, false)) Hint("Pages were converted to images to reach this size, so text can't be selected.")
+                    // Equal widths, tighter padding and single-line labels so "WhatsApp" never wraps on narrow phones
+                    val pad = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
+                    @Composable fun Label(t: String) = Text(t, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button({ ctx.sharePdfs(outs, mime = mime) }, Modifier.weight(1f)) { Text("Share") }
-                        FilledTonalButton({ ctx.sharePdfs(outs, "com.whatsapp", mime) }, Modifier.weight(1f)) { Text("WhatsApp") }
-                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0], mime) }, Modifier.weight(1f)) { Text("Open") }
+                        Button({ ctx.sharePdfs(outs, mime = mime) }, Modifier.weight(1f), contentPadding = pad) { Label("Share") }
+                        FilledTonalButton({ ctx.sharePdfs(outs, "com.whatsapp", mime) }, Modifier.weight(1f), contentPadding = pad) { Label("WhatsApp") }
+                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0], mime) }, Modifier.weight(1f), contentPadding = pad) { Label("Open") }
                     }
                     if (mime == "application/pdf" && outs.size == 1) {
                         Text("Do more with this file", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
