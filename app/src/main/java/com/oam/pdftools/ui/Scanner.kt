@@ -39,7 +39,7 @@ fun rememberScanner(pageLimit: Int? = null, onError: (String) -> Unit, onPages: 
                 .build()
             GmsDocumentScanning.getClient(opts).getStartScanIntent(ctx.activity())
                 .addOnSuccessListener { launcher.launch(IntentSenderRequest.Builder(it).build()) }
-                .addOnFailureListener { err("Scanner unavailable on this device (${it.message}). You can pick photos from the gallery instead.") }
+                .addOnFailureListener { err("Scanner unavailable on this device (${it.message}).") }
         }
     }
 }
