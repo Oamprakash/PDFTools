@@ -8,6 +8,8 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import android.net.Uri
 import android.provider.DocumentsContract
+import com.tom_roush.pdfbox.cos.COSName
+import com.tom_roush.pdfbox.cos.COSStream
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.*
@@ -67,9 +69,9 @@ class PdfOps(private val cr: ContentResolver) {
     }
 
     /** "Light" compression: recompress embedded images; text stays selectable. */
-    fun compress(src: Uri, out: Uri) = load(src).use { recompressImages(it, 1500, 0.6f); save(it, out) }
+    fun compress(src: Uri, out: Uri) = load(src).use { deflateStreams(it); recompressImages(it, 1500, 0.6f); save(it, out) }
 
-    enum class Mode { ORIGINAL, IMAGES, RASTER }
+    enum class Mode { ORIGINAL, LOSSLESS, IMAGES, RASTER }
     data class TargetResult(val hit: Boolean, val mode: Mode)
 
     /**
@@ -91,12 +93,20 @@ class PdfOps(private val cr: ContentResolver) {
         }
         if (orig.length() <= target) return finish(true)
 
-        onStep("Analysing sample pages…")
+        // Step 0: lossless. Many generated PDFs (FPDF, some scanners) store page streams uncompressed.
+        onStep("Compressing without quality loss…")
+        val lossless = File(tmp, "lossless.pdf")
         val (pages, hasImages) = PDDocument.load(orig, mem).use { d ->
+            deflateStreams(d); d.save(lossless)
             d.numberOfPages to d.pages.any { p -> p.resources?.let { r -> r.xObjectNames.any { r.getXObject(it) is PDImageXObject } } == true }
         }
-        val sample = if (pages <= 4) orig else File(tmp, "sample.pdf").also { f ->
-            PDDocument.load(orig, mem).use { s ->
+        if (lossless.length() < best.length()) { best = lossless; mode = Mode.LOSSLESS } else lossless.delete()
+        if (best.length() <= target) return finish(true)
+        val base = best
+
+        onStep("Analysing sample pages…")
+        val sample = if (pages <= 4) base else File(tmp, "sample.pdf").also { f ->
+            PDDocument.load(base, mem).use { s ->
                 PDDocument().use { d -> listOf(0, pages / 2, pages - 1).forEach { d.importPage(s.getPage(it)) }; d.save(f) }
             }
         }
@@ -110,10 +120,11 @@ class PdfOps(private val cr: ContentResolver) {
             val cache = HashMap<Int, Long>()
             fun predict(i: Int) = cache.getOrPut(i) {
                 val f = File(tmp, "s.pdf"); apply(m, ladder[i], sample, f)
-                (orig.length() * f.length().toDouble() / sample.length()).toLong().also { f.delete() }
+                (base.length() * f.length().toDouble() / sample.length()).toLong().also { f.delete() }
             }
             val last = ladder.lastIndex
-            var i = if (predict(last) > goal) { if (!forceLast) return false; last } else {
+            // Don't run a full pass that's predicted to be no smaller than what we already have (e.g. rasterising a text PDF)
+            var i = if (predict(last) > goal) { if (!forceLast || predict(last) >= best.length()) return false; last } else {
                 var lo = 0; var hi = last
                 while (lo < hi) { val mid = (lo + hi) / 2; if (predict(mid) <= goal) hi = mid else lo = mid + 1 }
                 lo
@@ -121,9 +132,9 @@ class PdfOps(private val cr: ContentResolver) {
             while (true) {
                 n++
                 onStep(if (m == Mode.RASTER) "Converting pages to images (pass $n)…" else "Compressing images (pass $n)…")
-                val f = File(tmp, "full$n.pdf"); apply(m, ladder[i], orig, f)
+                val f = File(tmp, "full$n.pdf"); apply(m, ladder[i], base, f)
                 val size = f.length()
-                if (size < best.length()) { if (best != orig) best.delete(); best = f; mode = m } else f.delete()
+                if (size < best.length()) { if (best != base) best.delete(); best = f; mode = m } else f.delete()
                 if (size <= target) return true
                 if (i == last) return false
                 val factor = size / predict(i).toDouble() // how far off the sample prediction was
@@ -133,6 +144,16 @@ class PdfOps(private val cr: ContentResolver) {
 
         val hit = (hasImages && search(Mode.IMAGES, LIGHT, forceLast = false)) || search(Mode.RASTER, RASTER, forceLast = true)
         return finish(hit)
+    }
+
+    /** Lossless: Flate-compress every stream stored without a filter. */
+    private fun deflateStreams(d: PDDocument) {
+        for (o in d.document.objects) {
+            val s = o.`object` as? COSStream ?: continue
+            if (s.filters != null || s.getCOSName(COSName.TYPE) == COSName.METADATA) continue
+            val bytes = s.createInputStream().use { it.readBytes() }
+            s.createOutputStream(COSName.FLATE_DECODE).use { it.write(bytes) }
+        }
     }
 
     private fun recompressImages(d: PDDocument, maxPx: Int, quality: Float) {
