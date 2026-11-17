@@ -43,3 +43,6 @@ fun Context.thumb(uri: Uri, maxPx: Int = 256): android.graphics.Bitmap? {
     var s = 1; while (maxOf(o.outWidth, o.outHeight) / (s * 2) >= maxPx) s *= 2
     return contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = s }) }
 }
+
+tailrec fun Context.findActivity(): android.app.Activity =
+    this as? android.app.Activity ?: (this as android.content.ContextWrapper).baseContext.findActivity()

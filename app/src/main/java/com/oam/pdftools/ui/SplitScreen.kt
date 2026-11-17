@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.oam.pdftools.ads.Ads
+import com.oam.pdftools.ads.rememberRewardGate
 import com.oam.pdftools.fileMeta
 import com.oam.pdftools.Incoming
 import com.oam.pdftools.pdf.PdfThumbs
@@ -43,6 +45,7 @@ fun SplitScreen(back: () -> Unit) {
         if (every) n.toIntOrNull()?.takeIf { it > 0 }?.let { k -> (0 until c step k).map { it..minOf(it + k - 1, c - 1) } }
         else parseRanges(custom, c)
     }
+    val gate = rememberRewardGate()
     var workId by remember { mutableStateOf<UUID?>(null) }
 
     val pick = rememberLauncherForActivityResult(OpenDocument()) { if (it != null) src = it }
@@ -51,7 +54,6 @@ fun SplitScreen(back: () -> Unit) {
         val s = src; val r = ranges
         if (tree == null || s == null || r == null) return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        // TODO ad: rewarded gate if r.size > free limit
         workId = PdfWorker.enqueue(ctx, PdfWorker.SPLIT, listOf(s), tree,
             mapOf(PdfWorker.RANGES to r.flatMap { listOf(it.first, it.last) }.toIntArray()))
     }
@@ -85,7 +87,7 @@ fun SplitScreen(back: () -> Unit) {
         }
         Spacer(Modifier.weight(1f))
         JobStatus(info)
-        Button({ folder.launch(null) }, Modifier.fillMaxWidth(),
+        Button({ val n = ranges?.size ?: 0; gate(Ads.needsReward(PdfWorker.SPLIT, n), Ads.gateText(PdfWorker.SPLIT, n)) { folder.launch(null) } }, Modifier.fillMaxWidth(),
             enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text("Choose folder & split") }
     }
 }

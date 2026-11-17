@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import com.oam.pdftools.ads.Ads
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -20,7 +22,8 @@ fun JobStatus(info: WorkInfo?) {
             info.progress.getString(PdfWorker.STEP)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
         }
         WorkInfo.State.SUCCEEDED -> {
-            // TODO ad: capped interstitial here (skip first 2 tasks, ≥ 3–4 min apart)
+            val act = ctx.findActivity()
+            LaunchedEffect(info.id) { Ads.onTaskCompleted(act, info.id) } // capped interstitial (see Ads)
             val d = info.outputData
             val outs = d.getStringArray(PdfWorker.OUTS).orEmpty().map(Uri::parse)
             val mime = d.getString(PdfWorker.MIME) ?: "application/pdf"

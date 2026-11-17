@@ -20,4 +20,5 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     implementation("com.google.android.gms:play-services-mlkit-document-scanner:16.0.0")
+    implementation("com.google.android.gms:play-services-ads:25.5.0")
 }

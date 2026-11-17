@@ -16,6 +16,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.oam.pdftools.*
+import com.oam.pdftools.ads.Ads
+import com.oam.pdftools.ads.rememberRewardGate
 import com.oam.pdftools.pdf.PdfOps
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
     val items = remember { mutableStateListOf<Uri>().apply { addAll(if (multi) Incoming.uris else Incoming.uris.take(1)) } }
     var targetKb by remember { mutableStateOf<Int?>(null) }
     var allowRaster by remember { mutableStateOf(false) }
+    val gate = rememberRewardGate()
     var workId by remember { mutableStateOf<UUID?>(null) }
 
     fun add(list: List<Uri>) { if (!multi) items.clear(); items += if (multi) list else list.take(1) }
@@ -109,8 +112,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
                 if (isImg) pickImg.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
                 else pickPdf.launch(arrayOf("application/pdf"))
             }) { Text(if (items.isEmpty()) "Select" else "Add more") }
-            // TODO ad: if items exceed free limit → rewarded ad gate
-            Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") },
+            Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(op, items.size)) { save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") } },
                 enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text("Create PDF") }
         }
     }

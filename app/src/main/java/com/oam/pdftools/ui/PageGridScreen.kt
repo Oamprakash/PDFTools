@@ -18,6 +18,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.oam.pdftools.Incoming
+import com.oam.pdftools.ads.Ads
+import com.oam.pdftools.ads.rememberRewardGate
 import com.oam.pdftools.pdf.PdfThumbs
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.flow.flowOf
@@ -36,6 +38,7 @@ fun PageGridScreen(op: String, back: () -> Unit) {
     DisposableEffect(thumbs) { onDispose { thumbs?.close() } }
     val sel = remember(src) { mutableStateListOf<Int>() }
     val rot = remember(src) { mutableStateMapOf<Int, Int>() }
+    val gate = rememberRewardGate()
     var workId by remember { mutableStateOf<UUID?>(null) }
 
     val pick = rememberLauncherForActivityResult(OpenDocument()) { if (it != null) src = it }
@@ -53,7 +56,6 @@ fun PageGridScreen(op: String, back: () -> Unit) {
     val folder = rememberLauncherForActivityResult(OpenDocumentTree()) { tree ->
         val s = src ?: return@rememberLauncherForActivityResult; tree ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        // TODO ad: rewarded gate for exporting many pages at 300 DPI
         workId = PdfWorker.enqueue(ctx, op, listOf(s), tree, mapOf(
             PdfWorker.PAGES to sel.sorted().toIntArray(), PdfWorker.PNG to png, PdfWorker.DPI to if (hiRes) 300 else 150))
     }
@@ -98,7 +100,10 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             FilterChip(!png, { png = false }, { Text("JPG") }); FilterChip(png, { png = true }, { Text("PNG") })
             FilterChip(!hiRes, { hiRes = false }, { Text("Standard · 150 DPI") }); FilterChip(hiRes, { hiRes = true }, { Text("High · 300 DPI") })
         }
-        if (isImage) Button({ folder.launch(null) }, Modifier.fillMaxWidth(),
+        if (isImage) Button({
+            val n = if (sel.isEmpty()) thumbs?.count ?: 0 else sel.size
+            gate(Ads.needsReward(op, n), Ads.gateText(op, n)) { folder.launch(null) }
+        }, Modifier.fillMaxWidth(),
             enabled = thumbs != null && info?.state != WorkInfo.State.RUNNING) {
             Text(if (sel.isEmpty()) "Export all pages" else "Export ${sel.size} page(s)")
         } else Row {
