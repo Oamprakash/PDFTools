@@ -103,6 +103,14 @@ fun ToolScreen(op: String, back: () -> Unit) {
             val t = targetKb
             if (srcSize != null && t != null && srcSize <= t * 1000L) Text("Already under ${kbLabel(t)}. It will be saved as is.")
         }
+        if (op == PdfWorker.MERGE) Text(
+            when (items.size) {
+                0 -> "Tip: in the file picker, long-press a PDF to select several at once."
+                1 -> "Add at least one more PDF: tap Add more (long-press in the picker to pick several)."
+                else -> "Use ↑ ↓ to set the order. Tap Add more for more files."
+            },
+            style = MaterialTheme.typography.bodySmall
+        )
         if (isPw) PasswordInput(op == PdfWorker.PROTECT, items.firstOrNull()) { password = it }
         scanError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         JobStatus(info)
