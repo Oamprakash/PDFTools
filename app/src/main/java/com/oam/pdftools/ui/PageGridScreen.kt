@@ -1,5 +1,8 @@
 package com.oam.pdftools.ui
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.RotateLeft
+import androidx.compose.material.icons.outlined.RotateRight
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -10,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -68,48 +72,52 @@ fun PageGridScreen(op: String, back: () -> Unit) {
         if (v == 0) rot.remove(it) else rot[it] = v
     }
 
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(back) { Text("← Back") }
-            Text(op, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text("Change file") }
-        }
+    ToolLayout(op, back,
+        actions = { if (src != null) TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text("Change file") } },
+        bottom = {
+            val busy = info?.state == WorkInfo.State.RUNNING
+            if (src == null) Button({ pick.launch(arrayOf("application/pdf")) }, Modifier.weight(1f)) { Text("Select PDF") }
+            else if (isImage) Button({
+                val n = if (sel.isEmpty()) thumbs?.count ?: 0 else sel.size
+                gate(Ads.needsReward(op, n), Ads.gateText(op, n)) { folder.launch(null) }
+            }, Modifier.weight(1f), enabled = thumbs != null && !busy) {
+                Text(if (sel.isEmpty()) "Export all pages" else "Export ${sel.size} page(s)")
+            } else {
+                if (isRotate) {
+                    FilledTonalIconButton({ turn(-90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateLeft, "Rotate left") }
+                    FilledTonalIconButton({ turn(90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateRight, "Rotate right") }
+                }
+                val ready = if (isRotate) rot.isNotEmpty() else sel.isNotEmpty()
+                Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") }, Modifier.weight(1f),
+                    enabled = ready && !busy) { Text("Save PDF") }
+            }
+        }) {
+        JobStatus(info)
         when {
-            src == null -> Text("Select a PDF to start.")
-            thumbs == null -> Text("Can't open this PDF. If it's password-protected, use Unlock PDF first.", color = MaterialTheme.colorScheme.error)
+            src == null -> EmptyState(op, "Pick a PDF", "You'll see all its pages here.")
+            thumbs == null -> Hint("Can't open this PDF. If it's password-protected, use Unlock first.", error = true)
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isImage && sel.isEmpty()) "All ${thumbs.count} pages" else "${sel.size}/${thumbs.count} selected", Modifier.weight(1f))
+                    Text(if (isImage && sel.isEmpty()) "All ${thumbs.count} pages" else "${sel.size} of ${thumbs.count} selected",
+                        Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     TextButton({ sel.clear(); sel += 0 until thumbs.count }) { Text("All") }
                     TextButton({ sel.clear() }) { Text("None") }
                 }
-                LazyVerticalGrid(GridCells.Adaptive(104.dp), Modifier.weight(1f),
+                when (op) {
+                    PdfWorker.EXTRACT -> Hint("Tap the pages to keep. They'll be saved as a new PDF.")
+                    PdfWorker.ROTATE -> Hint("Tap pages, then rotate. With nothing selected, all pages rotate.")
+                    else -> Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(!png, { png = false }, { Text("JPG") }); FilterChip(png, { png = true }, { Text("PNG") })
+                        FilterChip(!hiRes, { hiRes = false }, { Text("Standard") }); FilterChip(hiRes, { hiRes = true }, { Text("High quality") })
+                    }
+                }
+                LazyVerticalGrid(GridCells.Adaptive(104.dp), Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(thumbs.count, key = { it }) { i ->
                         PageThumb(thumbs, i, i in sel, rot[i] ?: 0) { if (i in sel) sel.remove(i) else sel.add(i) }
                     }
                 }
             }
-        }
-        JobStatus(info)
-        if (isRotate) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ turn(-90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟲ Left") }
-            OutlinedButton({ turn(90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟳ Right") }
-        }
-        if (isImage) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(!png, { png = false }, { Text("JPG") }); FilterChip(png, { png = true }, { Text("PNG") })
-            FilterChip(!hiRes, { hiRes = false }, { Text("Standard · 150 DPI") }); FilterChip(hiRes, { hiRes = true }, { Text("High · 300 DPI") })
-        }
-        if (isImage) Button({
-            val n = if (sel.isEmpty()) thumbs?.count ?: 0 else sel.size
-            gate(Ads.needsReward(op, n), Ads.gateText(op, n)) { folder.launch(null) }
-        }, Modifier.fillMaxWidth(),
-            enabled = thumbs != null && info?.state != WorkInfo.State.RUNNING) {
-            Text(if (sel.isEmpty()) "Export all pages" else "Export ${sel.size} page(s)")
-        } else Row {
-            val ready = if (isRotate) rot.isNotEmpty() else sel.isNotEmpty()
-            Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") }, Modifier.fillMaxWidth(),
-                enabled = ready && info?.state != WorkInfo.State.RUNNING) { Text("Save PDF") }
         }
     }
 }
@@ -119,7 +127,8 @@ private fun PageThumb(thumbs: PdfThumbs, i: Int, selected: Boolean, deg: Int, on
     val bmp by produceState<android.graphics.Bitmap?>(null, i) { value = runCatching { thumbs.page(i) }.getOrNull() }
     val border = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
     Column(horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.border(if (selected) 3.dp else 1.dp, border).clickable(onClick = onClick).padding(6.dp)) {
+        modifier = Modifier.clip(MaterialTheme.shapes.small).border(if (selected) 2.dp else 1.dp, border, MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surfaceContainerLow).clickable(onClick = onClick).padding(6.dp)) {
         Box(Modifier.size(92.dp), contentAlignment = Alignment.Center) {
             bmp?.let { Image(it.asImageBitmap(), "Page ${i + 1}", Modifier.fillMaxSize().rotate(deg.toFloat())) }
                 ?: CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)

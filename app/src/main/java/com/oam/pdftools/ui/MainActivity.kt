@@ -5,7 +5,8 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.MaterialTheme
+import androidx.activity.enableEdgeToEdge
+import com.oam.pdftools.ui.theme.AppTheme
 import androidx.compose.runtime.*
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
@@ -20,14 +21,16 @@ class MainActivity : ComponentActivity() {
     private val pendingRoute = mutableStateOf<String?>(null)
 
     override fun onCreate(s: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(s)
         if (s == null) handle(intent)
         setContent {
-            MaterialTheme {
+            AppTheme {
                 val nav = rememberNavController()
                 val route by pendingRoute
                 LaunchedEffect(route) { route?.let { nav.navigate(it) { popUpTo("home") }; pendingRoute.value = null } }
                 val back: () -> Unit = { nav.popBackStack() }
+                CompositionLocalProvider(LocalNavigate provides { op: String -> nav.navigate("tool/$op") }) {
                 NavHost(nav, "home") {
                     composable("home") { HomeScreen { Incoming.uris = emptyList(); nav.navigate("tool/$it") } }
                     composable("open") { OpenWithScreen({ nav.navigate("tool/$it") }, back) }
@@ -39,6 +42,7 @@ class MainActivity : ComponentActivity() {
                             else -> ToolScreen(op, back)
                         }
                     }
+                }
                 }
             }
         }

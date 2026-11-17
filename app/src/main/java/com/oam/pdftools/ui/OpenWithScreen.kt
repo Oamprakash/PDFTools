@@ -1,9 +1,13 @@
 package com.oam.pdftools.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -15,12 +19,22 @@ import com.oam.pdftools.work.PdfWorker
 fun OpenWithScreen(open: (String) -> Unit, back: () -> Unit) {
     val ctx = LocalContext.current
     val meta = remember { Incoming.uris.firstOrNull()?.let(ctx::fileMeta) }
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        TextButton(back) { Text("← Back") }
-        Text(meta?.let { "${it.first} · ${it.second.kb()}" } ?: "No file", style = MaterialTheme.typography.titleMedium)
-        Text("What do you want to do?")
-        listOf(PdfWorker.COMPRESS, PdfWorker.SPLIT, PdfWorker.EXTRACT, PdfWorker.ROTATE, PdfWorker.TO_IMAGE, PdfWorker.PROTECT, PdfWorker.UNLOCK, PdfWorker.MERGE).forEach { op ->
-            ElevatedCard(Modifier.fillMaxWidth().clickable { open(op) }) { Text(op, Modifier.padding(20.dp)) }
+    ToolLayout("What do you want to do?", back) {
+        meta?.let { FileRow(it.first, it.second.kb()) }
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            items(listOf(PdfWorker.COMPRESS, PdfWorker.PROTECT, PdfWorker.SPLIT, PdfWorker.EXTRACT, PdfWorker.ROTATE,
+                PdfWorker.TO_IMAGE, PdfWorker.UNLOCK, PdfWorker.MERGE)) { op ->
+                Card({ open(op) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), border = cardBorder) {
+                    Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ToolIcon(op, 40.dp)
+                        Column(Modifier.weight(1f)) {
+                            Text(label(op), style = MaterialTheme.typography.titleSmall)
+                            Text(toolStyle(op).desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
         }
     }
 }

@@ -45,20 +45,15 @@ fun IdCardScreen(back: () -> Unit) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
     }.collectAsStateWithLifecycle(null)
 
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(back) { Text("← Back") }
-            Text(PdfWorker.ID_CARD, style = MaterialTheme.typography.titleLarge)
-        }
-        Text("Both sides go on one A4 page at real card size (85.6 × 54 mm), ready to print.", style = MaterialTheme.typography.bodySmall)
-        Text("Scan each side. The card is auto-cropped and cleaned up.", style = MaterialTheme.typography.bodySmall)
+    ToolLayout(PdfWorker.ID_CARD, back, bottom = {
+        Button({ save.launch("ID_card_${System.currentTimeMillis()}.pdf") }, Modifier.weight(1f),
+            enabled = front != null && info?.state != WorkInfo.State.RUNNING) { Text("Create PDF") }
+    }) {
+        JobStatus(info)
+        Hint("Scan each side. The card is auto-cropped, cleaned up and placed at real size (85.6 × 54 mm) on one A4 page, ready to print.")
         CardSlot("Front", front, scanFront) { front = null }
         CardSlot("Back (optional)", rear, scanBack) { rear = null }
-        error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        Spacer(Modifier.weight(1f))
-        JobStatus(info)
-        Button({ save.launch("ID_card_${System.currentTimeMillis()}.pdf") }, Modifier.fillMaxWidth(),
-            enabled = front != null && info?.state != WorkInfo.State.RUNNING) { Text("Create PDF") }
+        error?.let { Hint(it, error = true) }
     }
 }
 
@@ -68,7 +63,7 @@ private fun CardSlot(label: String, uri: Uri?, scan: () -> Unit, clear: () -> Un
     val bmp by produceState<Bitmap?>(null, uri) {
         value = uri?.let { withContext(Dispatchers.IO) { runCatching { ctx.thumb(it) }.getOrNull() } }
     }
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), border = cardBorder) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(96.dp, 61.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) {
                 bmp?.let { Image(it.asImageBitmap(), label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }

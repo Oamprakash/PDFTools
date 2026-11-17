@@ -61,33 +61,32 @@ fun SplitScreen(back: () -> Unit) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
     }.collectAsStateWithLifecycle(null)
 
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(back) { Text("← Back") }
-            Text(PdfWorker.SPLIT, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-            TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text("Change file") }
-        }
+    ToolLayout(PdfWorker.SPLIT, back,
+        actions = { if (src != null) TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text("Change file") } },
+        bottom = {
+            if (src == null) Button({ pick.launch(arrayOf("application/pdf")) }, Modifier.weight(1f)) { Text("Select PDF") }
+            else Button({ val n = ranges?.size ?: 0; gate(Ads.needsReward(PdfWorker.SPLIT, n), Ads.gateText(PdfWorker.SPLIT, n)) { folder.launch(null) } },
+                Modifier.weight(1f), enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text("Choose folder & split") }
+        }) {
+        JobStatus(info)
         when {
-            src == null -> Text("Select a PDF to start.")
-            count == null -> Text("Can't open this PDF. If it's password-protected, use Unlock PDF first.", color = MaterialTheme.colorScheme.error)
+            src == null -> EmptyState(PdfWorker.SPLIT, "Pick a PDF to split", "Split every few pages, or by your own page ranges.")
+            count == null -> Hint("Can't open this PDF. If it's password-protected, use Unlock first.", error = true)
             else -> {
-                Text("$name · $count pages")
+                FileRow(name.orEmpty(), "$count pages")
+                SectionTitle("Split by")
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(every, { every = true }); Text("Every ")
-                    OutlinedTextField(n, { n = it.filter(Char::isDigit).take(4) }, Modifier.width(72.dp), singleLine = true,
+                    RadioButton(every, { every = true }); Text("Every")
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedTextField(n, { n = it.filter(Char::isDigit).take(4); every = true }, Modifier.width(80.dp), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                    Text(" pages")
+                    Spacer(Modifier.width(8.dp)); Text("pages")
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(!every, { every = false }); Text("Custom ranges") }
                 if (!every) OutlinedTextField(custom, { custom = it }, Modifier.fillMaxWidth(), singleLine = true,
                     label = { Text("e.g. 1-3, 4, 5-10") })
-                if (ranges != null) Text("Will create ${ranges.size} file(s)")
-                else Text("Enter valid pages (1–$count)", color = MaterialTheme.colorScheme.error)
+                if (ranges != null) Hint("Will create ${ranges.size} file(s)") else Hint("Enter valid pages (1–$count)", error = true)
             }
         }
-        Spacer(Modifier.weight(1f))
-        JobStatus(info)
-        Button({ val n = ranges?.size ?: 0; gate(Ads.needsReward(PdfWorker.SPLIT, n), Ads.gateText(PdfWorker.SPLIT, n)) { folder.launch(null) } }, Modifier.fillMaxWidth(),
-            enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text("Choose folder & split") }
     }
 }

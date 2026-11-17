@@ -61,67 +61,69 @@ fun ToolScreen(op: String, back: () -> Unit) {
     }.collectAsStateWithLifecycle(null)
     val state = info?.state
 
-    Column(Modifier.fillMaxSize().systemBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row { TextButton(back) { Text("← Back") }; Text(op, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 10.dp)) }
-        LazyColumn(Modifier.weight(1f)) {
+    val pickMore: () -> Unit = {
+        if (isScan) { scanError = null; scan() }
+        else if (isImg) pickImg.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+        else pickPdf.launch(arrayOf("application/pdf"))
+    }
+    val (emptyTitle, emptyHint) = when (op) {
+        PdfWorker.SCAN -> "Scan your document" to "Pages are auto-cropped and cleaned up. Scan as many as you need."
+        PdfWorker.IMG -> "Add photos" to "Pick images from your gallery. You can reorder them before creating the PDF."
+        PdfWorker.MERGE -> "Add PDFs to merge" to "Tip: long-press a file in the picker to select several at once."
+        PdfWorker.COMPRESS -> "Pick a PDF to compress" to "Choose an exact size like 200 KB for job, exam and form uploads."
+        PdfWorker.PROTECT -> "Pick a PDF to protect" to "Add a password before sharing bank statements, ID copies and more."
+        PdfWorker.UNLOCK -> "Pick a locked PDF" to "Remove the password from a PDF you're allowed to open."
+        else -> "Pick a file" to ""
+    }
+    ToolLayout(op, back, bottom = {
+        OutlinedButton(pickMore, Modifier.weight(1f)) {
+            Text(when { items.isEmpty() -> if (isScan) "Scan" else "Select"; !multi -> "Change"; isScan -> "Scan more"; else -> "Add more" })
+        }
+        Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(op, items.size)) { save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") } },
+            Modifier.weight(1f), enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text(actionLabel(op)) }
+    }) {
+        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
+            item { JobStatus(info) } // result first, so it's visible without scrolling
+            if (items.isEmpty()) item { EmptyState(op, emptyTitle, emptyHint) }
             itemsIndexed(items) { i, u ->
-                ListItem(headlineContent = { Text(ctx.fileMeta(u).first, maxLines = 1) }, trailingContent = {
-                    Row {
-                        if (multi) {
-                            TextButton({ if (i > 0) items.add(i - 1, items.removeAt(i)) }) { Text("↑") }
-                            TextButton({ if (i < items.lastIndex) items.add(i + 1, items.removeAt(i)) }) { Text("↓") }
-                        }
-                        TextButton({ items.removeAt(i) }) { Text("✕") }
+                val meta = remember(u) { ctx.fileMeta(u) }
+                FileRow(meta.first, meta.second.takeIf { it > 0 }?.kb(), image = isImg || isScan,
+                    onUp = if (multi && i > 0) ({ items.add(i - 1, items.removeAt(i)) }) else null,
+                    onDown = if (multi && i < items.lastIndex) ({ items.add(i + 1, items.removeAt(i)) }) else null,
+                    onRemove = { items.removeAt(i) })
+            }
+            if (op == PdfWorker.MERGE && items.isNotEmpty()) item {
+                Hint(if (items.size == 1) "Add at least one more PDF (long-press in the picker to pick several)." else "Use the arrows to set the order.")
+            }
+            if (op == PdfWorker.COMPRESS && items.isNotEmpty()) item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val srcSize = remember(items.firstOrNull()) { items.firstOrNull()?.let { ctx.fileMeta(it).second } }
+                    val analysis by produceState<PdfOps.Analysis?>(null, items.firstOrNull()) {
+                        value = null
+                        val u = items.firstOrNull() ?: return@produceState
+                        value = withContext(Dispatchers.IO) { runCatching { PdfOps(ctx.contentResolver).analyze(u, srcSize ?: 0) }.getOrNull() }
                     }
-                })
+                    val a = analysis
+                    val floor = a?.takeIf { it.textOnly }?.minLossless // only text-only files have a hard floor
+                    when {
+                        a == null -> Hint("Checking file…")
+                        floor != null -> Hint("Text-only PDF · ${a.pages} pages. Smallest size without losing quality: about ${floor.kb()}")
+                    }
+                    TargetPicker(targetKb, floor) { targetKb = it }
+                    targetKb?.let { t ->
+                        if (floor != null && t * 1000L < floor) Hint("${kbLabel(t)} isn't realistic for this file. You'll get about ${floor.kb()}.", error = true)
+                        else if (srcSize != null && srcSize <= t * 1000L) Hint("Already under ${kbLabel(t)}. It will be saved as is.")
+                    }
+                    if (targetKb != null) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(allowRaster, { allowRaster = it })
+                        Text("Allow lower quality (text may look blurry)", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
-        }
-        if (op == PdfWorker.COMPRESS) {
-            val srcSize = remember(items.firstOrNull()) { items.firstOrNull()?.let { ctx.fileMeta(it).second } }
-            val analysis by produceState<PdfOps.Analysis?>(null, items.firstOrNull()) {
-                value = null
-                val u = items.firstOrNull() ?: return@produceState
-                value = withContext(Dispatchers.IO) { runCatching { PdfOps(ctx.contentResolver).analyze(u, srcSize ?: 0) }.getOrNull() }
+            if (isPw && items.isNotEmpty()) item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { PasswordInput(op == PdfWorker.PROTECT, items.firstOrNull()) { password = it } }
             }
-            val a = analysis
-            val floor = a?.takeIf { it.textOnly }?.minLossless // only text-only files have a hard floor
-            when {
-                items.isEmpty() -> {}
-                a == null -> Text("Checking file…", style = MaterialTheme.typography.bodySmall)
-                floor != null -> Text("Text-only PDF · ${a.pages} pages. Smallest size without losing quality: about ${floor.kb()}",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-            TargetPicker(targetKb, floor) { targetKb = it }
-            targetKb?.let { t ->
-                if (floor != null && t * 1000L < floor) Text("${kbLabel(t)} isn't realistic for this file. You'll get about ${floor.kb()}.",
-                    color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-            if (targetKb != null) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Checkbox(allowRaster, { allowRaster = it })
-                Text("Allow lower quality (text may look blurry)", style = MaterialTheme.typography.bodySmall)
-            }
-            val t = targetKb
-            if (srcSize != null && t != null && srcSize <= t * 1000L) Text("Already under ${kbLabel(t)}. It will be saved as is.")
-        }
-        if (op == PdfWorker.MERGE) Text(
-            when (items.size) {
-                0 -> "Tip: in the file picker, long-press a PDF to select several at once."
-                1 -> "Add at least one more PDF: tap Add more (long-press in the picker to pick several)."
-                else -> "Use ↑ ↓ to set the order. Tap Add more for more files."
-            },
-            style = MaterialTheme.typography.bodySmall
-        )
-        if (isPw) PasswordInput(op == PdfWorker.PROTECT, items.firstOrNull()) { password = it }
-        scanError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        JobStatus(info)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (isScan) OutlinedButton({ scanError = null; scan() }) { Text(if (items.isEmpty()) "Scan" else "Scan more") }
-            else OutlinedButton({
-                if (isImg) pickImg.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
-                else pickPdf.launch(arrayOf("application/pdf"))
-            }) { Text(if (items.isEmpty()) "Select" else "Add more") }
-            Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(op, items.size)) { save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") } },
-                enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text("Create PDF") }
+            scanError?.let { e -> item { Hint(e, error = true) } }
         }
     }
 }
