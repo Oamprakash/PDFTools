@@ -9,6 +9,7 @@ import com.oam.pdftools.fileMeta
 import com.oam.pdftools.pdf.PdfOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.util.UUID
 
 class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
@@ -17,12 +18,21 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         val ins = inputData.getStringArray(IN)!!.map(Uri::parse)
         val out = Uri.parse(inputData.getString(OUT))
         val ops = PdfOps(applicationContext.contentResolver)
+        var extra = Data.EMPTY
         fun single(block: () -> Unit) = block().let { listOf(out) }
         runCatching {
             val outs = when (op) {
                 IMG -> single { ops.imagesToPdf(ins, out) }
                 MERGE -> single { ops.merge(ins, out) }
-                COMPRESS -> single { ops.compress(ins[0], out) }
+                COMPRESS -> single {
+                    val kb = inputData.getInt(TARGET_KB, 0)
+                    if (kb <= 0) ops.compress(ins[0], out)
+                    else {
+                        // 1 KB = 1000 bytes here: stays under the limit whether a portal counts 1000 or 1024
+                        val r = ops.compressToTarget(ins[0], out, kb * 1000L, File(applicationContext.cacheDir, "compress"))
+                        extra = workDataOf(TARGET_KB to kb, HIT to r.hit, RASTER to (r.mode == PdfOps.Mode.RASTER))
+                    }
+                }
                 EXTRACT -> single { ops.extract(ins[0], pages(), out) }
                 ROTATE -> single { ops.rotate(ins[0], pages().zip(inputData.getIntArray(DEGS)!!.toList()).toMap(), out) }
                 SPLIT -> ops.split(ins[0], ranges(), out, applicationContext.fileMeta(ins[0]).first.substringBeforeLast('.'))
@@ -31,10 +41,10 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
             val dao = (applicationContext as App).db.recents()
             var outSize = 0L
             outs.forEach { val (name, size) = applicationContext.fileMeta(it); outSize += size; dao.put(Recent(it.toString(), name, op, size)) }
-            workDataOf(
+            Data.Builder().putAll(extra).putAll(workDataOf(
                 IN_SIZE to ins.sumOf { applicationContext.fileMeta(it).second }, OUT_SIZE to outSize,
                 OUTS to outs.take(50).map(Uri::toString).toTypedArray() // Data is capped at 10 KB
-            )
+            )).build()
         }.fold({ Result.success(it) }, { Result.failure(workDataOf("err" to it.message)) })
     }
 
@@ -42,7 +52,8 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     private fun ranges() = inputData.getIntArray(RANGES)!!.toList().chunked(2).map { it[0]..it[1] }
 
     companion object {
-        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
+        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"
+        const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"
