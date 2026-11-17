@@ -1,25 +1,36 @@
 package com.oam.pdftools.ui
 
 import android.net.Uri
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
-import com.oam.pdftools.openPdf
+import com.oam.pdftools.*
 import com.oam.pdftools.work.PdfWorker
 
 @Composable
-fun JobStatus(info: WorkInfo?, out: Uri?, canOpen: Boolean = true) {
+fun JobStatus(info: WorkInfo?) {
     val ctx = LocalContext.current
     when (info?.state) {
         WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> LinearProgressIndicator(Modifier.fillMaxWidth())
         WorkInfo.State.SUCCEEDED -> {
-            // TODO ad: capped interstitial here (≥ 2–3 min apart), then show result
-            val n = info.outputData.getInt(PdfWorker.COUNT, 1)
-            Text(if (n > 1) "Done ✓ $n files saved (see Recent)" else "Done ✓")
-            if (canOpen) Button({ out?.let(ctx::openPdf) }) { Text("Open PDF") }
+            // TODO ad: capped interstitial here (skip first 2 tasks, ≥ 3–4 min apart)
+            val d = info.outputData
+            val outs = d.getStringArray(PdfWorker.OUTS).orEmpty().map(Uri::parse)
+            ElevatedCard(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(if (outs.size > 1) "Done ✓ ${outs.size} files saved" else "Done ✓", style = MaterialTheme.typography.titleMedium)
+                    Text(sizeChange(d.getLong(PdfWorker.IN_SIZE, 0), d.getLong(PdfWorker.OUT_SIZE, 0)))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0]) }) { Text("Open") }
+                        Button({ ctx.sharePdfs(outs, "com.whatsapp") }) { Text("WhatsApp") }
+                        OutlinedButton({ ctx.sharePdfs(outs) }) { Text("Share") }
+                    }
+                }
+            }
         }
         WorkInfo.State.FAILED -> Text("Failed: ${info.outputData.getString("err")}", color = MaterialTheme.colorScheme.error)
         else -> {}

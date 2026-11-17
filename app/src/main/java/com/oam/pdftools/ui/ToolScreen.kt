@@ -27,9 +27,8 @@ fun ToolScreen(op: String, back: () -> Unit) {
     val isImg = op == PdfWorker.IMG
     val multi = op != PdfWorker.COMPRESS
     val minItems = if (op == PdfWorker.MERGE) 2 else 1
-    val items = remember { mutableStateListOf<Uri>() }
+    val items = remember { mutableStateListOf<Uri>().apply { addAll(if (multi) Incoming.uris else Incoming.uris.take(1)) } }
     var workId by remember { mutableStateOf<UUID?>(null) }
-    var out by remember { mutableStateOf<Uri?>(null) }
 
     fun add(list: List<Uri>) { if (!multi) items.clear(); items += if (multi) list else list.take(1) }
     val pickImg = rememberLauncherForActivityResult(PickMultipleVisualMedia()) { add(it) }
@@ -37,7 +36,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         u ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        out = u; workId = PdfWorker.enqueue(ctx, op, items.toList(), u)
+        workId = PdfWorker.enqueue(ctx, op, items.toList(), u)
     }
     val info by remember(workId) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
@@ -59,7 +58,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
                 })
             }
         }
-        JobStatus(info, out)
+        JobStatus(info)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton({
                 if (isImg) pickImg.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))

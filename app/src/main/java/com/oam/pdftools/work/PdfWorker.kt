@@ -29,16 +29,20 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                 else -> error("Unknown op $op")
             }
             val dao = (applicationContext as App).db.recents()
-            outs.forEach { val (name, size) = applicationContext.fileMeta(it); dao.put(Recent(it.toString(), name, op, size)) }
-            outs.size
-        }.fold({ Result.success(workDataOf(COUNT to it)) }, { Result.failure(workDataOf("err" to it.message)) })
+            var outSize = 0L
+            outs.forEach { val (name, size) = applicationContext.fileMeta(it); outSize += size; dao.put(Recent(it.toString(), name, op, size)) }
+            workDataOf(
+                IN_SIZE to ins.sumOf { applicationContext.fileMeta(it).second }, OUT_SIZE to outSize,
+                OUTS to outs.take(50).map(Uri::toString).toTypedArray() // Data is capped at 10 KB
+            )
+        }.fold({ Result.success(it) }, { Result.failure(workDataOf("err" to it.message)) })
     }
 
     private fun pages() = inputData.getIntArray(PAGES)!!.toList()
     private fun ranges() = inputData.getIntArray(RANGES)!!.toList().chunked(2).map { it[0]..it[1] }
 
     companion object {
-        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val COUNT = "count"
+        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"

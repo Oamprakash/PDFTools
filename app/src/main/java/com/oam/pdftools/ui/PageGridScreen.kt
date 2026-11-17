@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.oam.pdftools.Incoming
 import com.oam.pdftools.pdf.PdfThumbs
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.flow.flowOf
@@ -27,16 +28,15 @@ import java.util.UUID
 fun PageGridScreen(op: String, back: () -> Unit) {
     val ctx = LocalContext.current
     val isRotate = op == PdfWorker.ROTATE
-    var src by remember { mutableStateOf<Uri?>(null) }
+    var src by remember { mutableStateOf(Incoming.uris.firstOrNull()) }
     val thumbs = remember(src) { src?.let { runCatching { PdfThumbs(ctx, it) }.getOrNull() } }
     DisposableEffect(thumbs) { onDispose { thumbs?.close() } }
     val sel = remember(src) { mutableStateListOf<Int>() }
     val rot = remember(src) { mutableStateMapOf<Int, Int>() }
     var workId by remember { mutableStateOf<UUID?>(null) }
-    var out by remember { mutableStateOf<Uri?>(null) }
 
     val pick = rememberLauncherForActivityResult(OpenDocument()) { if (it != null) src = it }
-    LaunchedEffect(Unit) { pick.launch(arrayOf("application/pdf")) }
+    LaunchedEffect(Unit) { if (src == null) pick.launch(arrayOf("application/pdf")) }
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         val s = src ?: return@rememberLauncherForActivityResult; u ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
@@ -45,7 +45,7 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             put(PdfWorker.PAGES, pages)
             if (isRotate) put(PdfWorker.DEGS, pages.map { rot[it]!! }.toIntArray())
         }
-        out = u; workId = PdfWorker.enqueue(ctx, op, listOf(s), u, extra)
+        workId = PdfWorker.enqueue(ctx, op, listOf(s), u, extra)
     }
     val info by remember(workId) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
@@ -79,7 +79,7 @@ fun PageGridScreen(op: String, back: () -> Unit) {
                 }
             }
         }
-        JobStatus(info, out)
+        JobStatus(info)
         if (isRotate) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton({ turn(-90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟲ Left") }
             OutlinedButton({ turn(90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟳ Right") }

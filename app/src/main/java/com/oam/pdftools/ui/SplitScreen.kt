@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.oam.pdftools.fileMeta
+import com.oam.pdftools.Incoming
 import com.oam.pdftools.pdf.PdfThumbs
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.flow.flowOf
@@ -32,7 +33,7 @@ fun parseRanges(s: String, count: Int): List<IntRange>? = s.split(',').map(Strin
 @Composable
 fun SplitScreen(back: () -> Unit) {
     val ctx = LocalContext.current
-    var src by remember { mutableStateOf<Uri?>(null) }
+    var src by remember { mutableStateOf(Incoming.uris.firstOrNull()) }
     val name = remember(src) { src?.let { ctx.fileMeta(it).first } }
     val count = remember(src) { src?.let { u -> runCatching { PdfThumbs(ctx, u).use { it.count } }.getOrNull() } }
     var every by remember { mutableStateOf(true) }
@@ -43,16 +44,14 @@ fun SplitScreen(back: () -> Unit) {
         else parseRanges(custom, c)
     }
     var workId by remember { mutableStateOf<UUID?>(null) }
-    var out by remember { mutableStateOf<Uri?>(null) }
 
     val pick = rememberLauncherForActivityResult(OpenDocument()) { if (it != null) src = it }
-    LaunchedEffect(Unit) { pick.launch(arrayOf("application/pdf")) }
+    LaunchedEffect(Unit) { if (src == null) pick.launch(arrayOf("application/pdf")) }
     val folder = rememberLauncherForActivityResult(OpenDocumentTree()) { tree ->
         val s = src; val r = ranges
         if (tree == null || s == null || r == null) return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         // TODO ad: rewarded gate if r.size > free limit
-        out = tree
         workId = PdfWorker.enqueue(ctx, PdfWorker.SPLIT, listOf(s), tree,
             mapOf(PdfWorker.RANGES to r.flatMap { listOf(it.first, it.last) }.toIntArray()))
     }
@@ -85,7 +84,7 @@ fun SplitScreen(back: () -> Unit) {
             }
         }
         Spacer(Modifier.weight(1f))
-        JobStatus(info, out, canOpen = false)
+        JobStatus(info)
         Button({ folder.launch(null) }, Modifier.fillMaxWidth(),
             enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text("Choose folder & split") }
     }
