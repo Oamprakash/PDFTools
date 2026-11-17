@@ -17,7 +17,8 @@ class MainActivity : ComponentActivity() {
                     composable("home") { HomeScreen { nav.navigate("tool/$it") } }
                     composable("tool/{op}") {
                         val op = it.arguments!!.getString("op")!!
-                        if (op == PdfWorker.EXTRACT || op == PdfWorker.ROTATE) PageGridScreen(op) { nav.popBackStack() }
+                        if (op == PdfWorker.SPLIT) SplitScreen { nav.popBackStack() }
+                        else if (op == PdfWorker.EXTRACT || op == PdfWorker.ROTATE) PageGridScreen(op) { nav.popBackStack() }
                         else ToolScreen(op) { nav.popBackStack() }
                     }
                 }

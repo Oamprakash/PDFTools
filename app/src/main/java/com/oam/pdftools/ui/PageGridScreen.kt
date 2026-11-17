@@ -80,13 +80,13 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             }
         }
         JobStatus(info, out)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (isRotate) {
-                OutlinedButton({ turn(-90) }, enabled = thumbs != null) { Text("⟲ Left") }
-                OutlinedButton({ turn(90) }, enabled = thumbs != null) { Text("⟳ Right") }
-            }
+        if (isRotate) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton({ turn(-90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟲ Left") }
+            OutlinedButton({ turn(90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟳ Right") }
+        }
+        Row {
             val ready = if (isRotate) rot.isNotEmpty() else sel.isNotEmpty()
-            Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") },
+            Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") }, Modifier.fillMaxWidth(),
                 enabled = ready && info?.state != WorkInfo.State.RUNNING) { Text("Save PDF") }
         }
     }

@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.provider.DocumentsContract
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.multipdf.PDFMergerUtility
 import com.tom_roush.pdfbox.pdmodel.*
@@ -40,7 +41,17 @@ class PdfOps(private val cr: ContentResolver) {
         } finally { ins.forEach { it.close() } }
     }
 
-    /** pages are 0-based. Also covers "split by range". */
+    /** Writes one PDF per range into a user-picked folder (SAF tree). Returns the new file URIs. */
+    fun split(src: Uri, ranges: List<IntRange>, tree: Uri, base: String): List<Uri> = load(src).use { s ->
+        val dir = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        ranges.mapIndexed { i, r ->
+            val out = DocumentsContract.createDocument(cr, dir, "application/pdf", "${base}_part${i + 1}_p${r.first + 1}-${r.last + 1}")!!
+            PDDocument().use { d -> r.forEach { d.importPage(s.getPage(it)) }; save(d, out) }
+            out
+        }
+    }
+
+    /** pages are 0-based. */
     fun extract(src: Uri, pages: List<Int>, out: Uri) = load(src).use { s ->
         PDDocument().use { d -> pages.forEach { d.importPage(s.getPage(it)) }; save(d, out) }
     }
