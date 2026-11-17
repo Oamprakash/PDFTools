@@ -110,7 +110,12 @@ class PdfOps(private val cr: ContentResolver) {
         val page = PDPage(PDRectangle.A4).also(doc::addPage)
         val cw = 85.6f * 72 / 25.4f; val ch = 53.98f * 72 / 25.4f // ISO/IEC 7810 ID-1, in points
         val imgs = listOfNotNull(front, back).map { u -> decode(u, 1600).let { b -> JPEGFactory.createFromImage(doc, b, 0.9f).also { b.recycle() } } }
-        val sizes = imgs.map { if (it.height > it.width) ch to cw else cw to ch } // portrait cards stay portrait
+        // Fit inside the card box (portrait cards stay portrait), keeping aspect so uncropped photos aren't stretched
+        val sizes = imgs.map { img ->
+            val (bw, bh) = if (img.height > img.width) ch to cw else cw to ch
+            val s = minOf(bw / img.width, bh / img.height)
+            img.width * s to img.height * s
+        }
         val gap = 36f; val box = page.mediaBox
         var y = (box.height + sizes.sumOf { it.second.toDouble() }.toFloat() + gap * (imgs.size - 1)) / 2
         PDPageContentStream(doc, page).use { cs ->
