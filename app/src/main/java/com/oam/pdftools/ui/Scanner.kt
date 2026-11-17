@@ -35,7 +35,7 @@ fun rememberScanner(pageLimit: Int? = null, onError: (String) -> Unit, onPages: 
                 .setGalleryImportAllowed(true)
                 .setResultFormats(RESULT_FORMAT_JPEG)
                 .setScannerMode(SCANNER_MODE_FULL)
-                .apply { pageLimit?.let(::setPageLimit) }
+                .apply { if (pageLimit != null) setPageLimit(pageLimit) }
                 .build()
             GmsDocumentScanning.getClient(opts).getStartScanIntent(ctx.activity())
                 .addOnSuccessListener { launcher.launch(IntentSenderRequest.Builder(it).build()) }
