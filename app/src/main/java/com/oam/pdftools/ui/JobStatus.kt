@@ -30,7 +30,8 @@ fun JobStatus(info: WorkInfo?) {
                     val tKb = d.getInt(PdfWorker.TARGET_KB, 0)
                     if (tKb > 0) {
                         val hit = d.getBoolean(PdfWorker.HIT, false)
-                        Text(if (hit) "Under ${kbLabel(tKb)} ✓" else "Couldn't reach ${kbLabel(tKb)}. This is the smallest possible.",
+                        Text(if (hit) "Under ${kbLabel(tKb)} ✓" else if (d.getBoolean(PdfWorker.ALLOW_RASTER, false)) "Couldn't reach ${kbLabel(tKb)}. This is the smallest readable size."
+                             else "Couldn't reach ${kbLabel(tKb)} without losing quality. Tick \"Allow lower quality\" to go further.",
                             color = if (hit) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                     }
                     if (d.getBoolean(PdfWorker.RASTER, false))

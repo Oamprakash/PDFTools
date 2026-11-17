@@ -29,6 +29,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
     val minItems = if (op == PdfWorker.MERGE) 2 else 1
     val items = remember { mutableStateListOf<Uri>().apply { addAll(if (multi) Incoming.uris else Incoming.uris.take(1)) } }
     var targetKb by remember { mutableStateOf<Int?>(null) }
+    var allowRaster by remember { mutableStateOf(false) }
     var workId by remember { mutableStateOf<UUID?>(null) }
 
     fun add(list: List<Uri>) { if (!multi) items.clear(); items += if (multi) list else list.take(1) }
@@ -37,7 +38,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
     val save = rememberLauncherForActivityResult(CreateDocument("application/pdf")) { u ->
         u ?: return@rememberLauncherForActivityResult
         ctx.contentResolver.takePersistableUriPermission(u, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        workId = PdfWorker.enqueue(ctx, op, items.toList(), u, targetKb?.let { mapOf(PdfWorker.TARGET_KB to it) } ?: emptyMap())
+        workId = PdfWorker.enqueue(ctx, op, items.toList(), u, targetKb?.let { mapOf(PdfWorker.TARGET_KB to it, PdfWorker.ALLOW_RASTER to allowRaster) } ?: emptyMap())
     }
     val info by remember(workId) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
@@ -62,6 +63,10 @@ fun ToolScreen(op: String, back: () -> Unit) {
         if (op == PdfWorker.COMPRESS) {
             val srcSize = remember(items.firstOrNull()) { items.firstOrNull()?.let { ctx.fileMeta(it).second } }
             TargetPicker(targetKb) { targetKb = it }
+            if (targetKb != null) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Checkbox(allowRaster, { allowRaster = it })
+                Text("Allow lower quality (text may look blurry)", style = MaterialTheme.typography.bodySmall)
+            }
             val t = targetKb
             if (srcSize != null && t != null && srcSize <= t * 1000L) Text("Already under ${kbLabel(t)}. It will be saved as is.")
         }

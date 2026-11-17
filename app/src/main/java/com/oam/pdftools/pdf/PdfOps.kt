@@ -82,7 +82,7 @@ class PdfOps(private val cr: ContentResolver) {
      * Image recompression (text stays selectable) is tried before page rasterising.
      * Always writes the smallest result to [out]; hit=false means the target wasn't reachable.
      */
-    fun compressToTarget(src: Uri, out: Uri, target: Long, tmp: File, onStep: (String) -> Unit = {}): TargetResult {
+    fun compressToTarget(src: Uri, out: Uri, target: Long, tmp: File, allowRaster: Boolean = false, onStep: (String) -> Unit = {}): TargetResult {
         tmp.deleteRecursively(); tmp.mkdirs()
         val orig = File(tmp, "orig.pdf").also { f -> cr.openInputStream(src)!!.use { i -> f.outputStream().use { i.copyTo(it) } } }
         var best = orig; var mode = Mode.ORIGINAL; var n = 0
@@ -142,7 +142,8 @@ class PdfOps(private val cr: ContentResolver) {
             }
         }
 
-        val hit = (hasImages && search(Mode.IMAGES, LIGHT, forceLast = false)) || search(Mode.RASTER, RASTER, forceLast = true)
+        val hit = (hasImages && search(Mode.IMAGES, LIGHT, forceLast = false)) ||
+            (allowRaster && search(Mode.RASTER, RASTER, forceLast = true)) // opt-in: turns text into pixels
         return finish(hit)
     }
 
@@ -190,7 +191,8 @@ class PdfOps(private val cr: ContentResolver) {
         /** (max image px, JPEG quality) */
         val LIGHT = listOf(2000 to 0.75f, 1400 to 0.6f, 1000 to 0.5f, 800 to 0.4f, 600 to 0.3f)
         /** (DPI, JPEG quality) */
-        val RASTER = listOf(150 to 0.7f, 120 to 0.6f, 100 to 0.5f, 85 to 0.45f, 72 to 0.4f, 60 to 0.3f, 50 to 0.25f)
+        /** Floor at 100 DPI: below that, normal-size text becomes unreadable. */
+        val RASTER = listOf(150 to 0.7f, 130 to 0.6f, 115 to 0.55f, 100 to 0.5f)
     }
 
     private fun decode(uri: Uri, maxPx: Int): Bitmap {
