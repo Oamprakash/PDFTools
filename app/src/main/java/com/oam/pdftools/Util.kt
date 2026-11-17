@@ -13,18 +13,18 @@ fun Context.fileMeta(uri: Uri): Pair<String, Long> =
         c.getString(c.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) to c.getLong(c.getColumnIndexOrThrow(OpenableColumns.SIZE))
     } ?: (uri.lastPathSegment.orEmpty() to 0L)
 
-fun Context.openPdf(uri: Uri) = runCatching {
-    startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/pdf").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+fun Context.openPdf(uri: Uri, mime: String = "application/pdf") = runCatching {
+    startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
 }
 
 /** Share one or many PDFs; tries [pkg] (e.g. WhatsApp) first, falls back to the system chooser. */
-fun Context.sharePdfs(uris: List<Uri>, pkg: String? = null) {
+fun Context.sharePdfs(uris: List<Uri>, pkg: String? = null, mime: String = "application/pdf") {
     if (uris.isEmpty()) return
     val i = (if (uris.size == 1) Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_STREAM, uris[0])
              else Intent(Intent.ACTION_SEND_MULTIPLE).putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris)))
-        .setType("application/pdf").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        .setType(mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     if (pkg != null && runCatching { startActivity(Intent(i).setPackage(pkg)) }.isSuccess) return
-    runCatching { startActivity(Intent.createChooser(i, "Share PDF")) }
+    runCatching { startActivity(Intent.createChooser(i, "Share")) }
 }
 
 fun Long.kb() = if (this >= 1_048_576) "%.1f MB".format(this / 1_048_576f) else "${this / 1024} KB"

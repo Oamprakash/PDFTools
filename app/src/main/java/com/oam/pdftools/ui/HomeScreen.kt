@@ -13,7 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oam.pdftools.*
 import com.oam.pdftools.work.PdfWorker
 
-private val tools = listOf(PdfWorker.IMG, PdfWorker.MERGE, PdfWorker.SPLIT, PdfWorker.COMPRESS, PdfWorker.EXTRACT, PdfWorker.ROTATE)
+private val tools = listOf(PdfWorker.IMG, PdfWorker.MERGE, PdfWorker.SPLIT, PdfWorker.COMPRESS, PdfWorker.EXTRACT, PdfWorker.ROTATE, PdfWorker.TO_IMAGE)
 
 @Composable
 fun HomeScreen(open: (String) -> Unit) {

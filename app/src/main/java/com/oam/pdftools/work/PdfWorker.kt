@@ -38,14 +38,23 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                 }
                 EXTRACT -> single { ops.extract(ins[0], pages(), out) }
                 ROTATE -> single { ops.rotate(ins[0], pages().zip(inputData.getIntArray(DEGS)!!.toList()).toMap(), out) }
+                TO_IMAGE -> {
+                    val png = inputData.getBoolean(PNG, false)
+                    extra = workDataOf(MIME to if (png) "image/png" else "image/jpeg")
+                    ops.toImages(ins[0], pages().ifEmpty { null }, out, applicationContext.fileMeta(ins[0]).first.substringBeforeLast('.'),
+                        inputData.getInt(DPI, 150), png)
+                }
                 SPLIT -> ops.split(ins[0], ranges(), out, applicationContext.fileMeta(ins[0]).first.substringBeforeLast('.'))
                 else -> error("Unknown op $op")
             }
             val dao = (applicationContext as App).db.recents()
             var outSize = 0L
-            outs.forEach { val (name, size) = applicationContext.fileMeta(it); outSize += size; dao.put(Recent(it.toString(), name, op, size)) }
+            outs.forEach {
+                val (name, size) = applicationContext.fileMeta(it); outSize += size
+                if (op != TO_IMAGE) dao.put(Recent(it.toString(), name, op, size)) // Recents = PDFs only
+            }
             Data.Builder().putAll(extra).putAll(workDataOf(
-                IN_SIZE to ins.sumOf { applicationContext.fileMeta(it).second }, OUT_SIZE to outSize,
+                IN_SIZE to if (op == TO_IMAGE) 0L else ins.sumOf { applicationContext.fileMeta(it).second }, OUT_SIZE to outSize,
                 OUTS to outs.take(50).map(Uri::toString).toTypedArray() // Data is capped at 10 KB
             )).build()
         }.fold({ Result.success(it) }, { Result.failure(workDataOf("err" to it.message)) })
@@ -58,6 +67,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val STEP = "step"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"; const val ALLOW_RASTER = "allowRaster"
         const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
+        const val TO_IMAGE = "PDF to images"; const val DPI = "dpi"; const val PNG = "png"; const val MIME = "mime"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"
 

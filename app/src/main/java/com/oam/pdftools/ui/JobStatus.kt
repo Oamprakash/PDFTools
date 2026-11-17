@@ -23,6 +23,7 @@ fun JobStatus(info: WorkInfo?) {
             // TODO ad: capped interstitial here (skip first 2 tasks, ≥ 3–4 min apart)
             val d = info.outputData
             val outs = d.getStringArray(PdfWorker.OUTS).orEmpty().map(Uri::parse)
+            val mime = d.getString(PdfWorker.MIME) ?: "application/pdf"
             ElevatedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(if (outs.size > 1) "Done ✓ ${outs.size} files saved" else "Done ✓", style = MaterialTheme.typography.titleMedium)
@@ -37,9 +38,9 @@ fun JobStatus(info: WorkInfo?) {
                     if (d.getBoolean(PdfWorker.RASTER, false))
                         Text("Pages were converted to images to reach this size, so text can't be selected.", style = MaterialTheme.typography.bodySmall)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0]) }) { Text("Open") }
-                        Button({ ctx.sharePdfs(outs, "com.whatsapp") }) { Text("WhatsApp") }
-                        OutlinedButton({ ctx.sharePdfs(outs) }) { Text("Share") }
+                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0], mime) }) { Text("Open") }
+                        Button({ ctx.sharePdfs(outs, "com.whatsapp", mime) }) { Text("WhatsApp") }
+                        OutlinedButton({ ctx.sharePdfs(outs, mime = mime) }) { Text("Share") }
                     }
                 }
             }

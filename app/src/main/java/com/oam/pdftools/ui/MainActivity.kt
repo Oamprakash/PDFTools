@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
                     composable("tool/{op}") {
                         when (val op = it.arguments!!.getString("op")!!) {
                             PdfWorker.SPLIT -> SplitScreen(back)
-                            PdfWorker.EXTRACT, PdfWorker.ROTATE -> PageGridScreen(op, back)
+                            PdfWorker.EXTRACT, PdfWorker.ROTATE, PdfWorker.TO_IMAGE -> PageGridScreen(op, back)
                             else -> ToolScreen(op, back)
                         }
                     }

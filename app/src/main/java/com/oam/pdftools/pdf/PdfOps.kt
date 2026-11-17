@@ -58,6 +58,29 @@ class PdfOps(private val cr: ContentResolver) {
         }
     }
 
+    /** Renders pages (null = all) to JPG/PNG files in a user-picked folder. Returns the new file URIs. */
+    fun toImages(src: Uri, pages: List<Int>?, tree: Uri, base: String, dpi: Int, png: Boolean): List<Uri> {
+        val dir = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        val mime = if (png) "image/png" else "image/jpeg"
+        return cr.openFileDescriptor(src, "r")!!.use { pfd ->
+            PdfRenderer(pfd).use { r ->
+                (pages ?: (0 until r.pageCount).toList()).map { i ->
+                    r.openPage(i).use { p ->
+                        var w = p.width * dpi / 72; var h = p.height * dpi / 72
+                        val cap = Math.sqrt(25e6 / (w.toDouble() * h)) // max ~25 MP so 300 DPI posters don't OOM
+                        if (cap < 1) { w = (w * cap).toInt(); h = (h * cap).toInt() }
+                        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
+                        p.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+                        val out = DocumentsContract.createDocument(cr, dir, mime, "${base}_page${i + 1}")!!
+                        cr.openOutputStream(out, "wt")!!.use { bmp.compress(if (png) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG, 92, it) }
+                        bmp.recycle()
+                        out
+                    }
+                }
+            }
+        }
+    }
+
     /** pages are 0-based. */
     fun extract(src: Uri, pages: List<Int>, out: Uri) = load(src).use { s ->
         PDDocument().use { d -> pages.forEach { d.importPage(s.getPage(it)) }; save(d, out) }

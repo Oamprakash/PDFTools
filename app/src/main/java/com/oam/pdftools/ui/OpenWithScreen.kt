@@ -19,7 +19,7 @@ fun OpenWithScreen(open: (String) -> Unit, back: () -> Unit) {
         TextButton(back) { Text("← Back") }
         Text(meta?.let { "${it.first} · ${it.second.kb()}" } ?: "No file", style = MaterialTheme.typography.titleMedium)
         Text("What do you want to do?")
-        listOf(PdfWorker.COMPRESS, PdfWorker.SPLIT, PdfWorker.EXTRACT, PdfWorker.ROTATE, PdfWorker.MERGE).forEach { op ->
+        listOf(PdfWorker.COMPRESS, PdfWorker.SPLIT, PdfWorker.EXTRACT, PdfWorker.ROTATE, PdfWorker.TO_IMAGE, PdfWorker.MERGE).forEach { op ->
             ElevatedCard(Modifier.fillMaxWidth().clickable { open(op) }) { Text(op, Modifier.padding(20.dp)) }
         }
     }

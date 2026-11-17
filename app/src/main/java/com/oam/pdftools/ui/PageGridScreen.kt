@@ -28,6 +28,9 @@ import java.util.UUID
 fun PageGridScreen(op: String, back: () -> Unit) {
     val ctx = LocalContext.current
     val isRotate = op == PdfWorker.ROTATE
+    val isImage = op == PdfWorker.TO_IMAGE
+    var png by remember { mutableStateOf(false) }
+    var hiRes by remember { mutableStateOf(false) }
     var src by remember { mutableStateOf(Incoming.uris.firstOrNull()) }
     val thumbs = remember(src) { src?.let { runCatching { PdfThumbs(ctx, it) }.getOrNull() } }
     DisposableEffect(thumbs) { onDispose { thumbs?.close() } }
@@ -46,6 +49,13 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             if (isRotate) put(PdfWorker.DEGS, pages.map { rot[it]!! }.toIntArray())
         }
         workId = PdfWorker.enqueue(ctx, op, listOf(s), u, extra)
+    }
+    val folder = rememberLauncherForActivityResult(OpenDocumentTree()) { tree ->
+        val s = src ?: return@rememberLauncherForActivityResult; tree ?: return@rememberLauncherForActivityResult
+        ctx.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        // TODO ad: rewarded gate for exporting many pages at 300 DPI
+        workId = PdfWorker.enqueue(ctx, op, listOf(s), tree, mapOf(
+            PdfWorker.PAGES to sel.sorted().toIntArray(), PdfWorker.PNG to png, PdfWorker.DPI to if (hiRes) 300 else 150))
     }
     val info by remember(workId) {
         workId?.let { WorkManager.getInstance(ctx).getWorkInfoByIdFlow(it) } ?: flowOf(null)
@@ -67,7 +77,7 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             thumbs == null -> Text("Can't open this PDF (it may be password-protected).", color = MaterialTheme.colorScheme.error)
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("${sel.size}/${thumbs.count} selected", Modifier.weight(1f))
+                    Text(if (isImage && sel.isEmpty()) "All ${thumbs.count} pages" else "${sel.size}/${thumbs.count} selected", Modifier.weight(1f))
                     TextButton({ sel.clear(); sel += 0 until thumbs.count }) { Text("All") }
                     TextButton({ sel.clear() }) { Text("None") }
                 }
@@ -84,7 +94,14 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             OutlinedButton({ turn(-90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟲ Left") }
             OutlinedButton({ turn(90) }, Modifier.weight(1f), enabled = thumbs != null) { Text("⟳ Right") }
         }
-        Row {
+        if (isImage) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(!png, { png = false }, { Text("JPG") }); FilterChip(png, { png = true }, { Text("PNG") })
+            FilterChip(!hiRes, { hiRes = false }, { Text("Standard · 150 DPI") }); FilterChip(hiRes, { hiRes = true }, { Text("High · 300 DPI") })
+        }
+        if (isImage) Button({ folder.launch(null) }, Modifier.fillMaxWidth(),
+            enabled = thumbs != null && info?.state != WorkInfo.State.RUNNING) {
+            Text(if (sel.isEmpty()) "Export all pages" else "Export ${sel.size} page(s)")
+        } else Row {
             val ready = if (isRotate) rot.isNotEmpty() else sel.isNotEmpty()
             Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") }, Modifier.fillMaxWidth(),
                 enabled = ready && info?.state != WorkInfo.State.RUNNING) { Text("Save PDF") }
