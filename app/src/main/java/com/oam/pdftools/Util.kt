@@ -35,3 +35,11 @@ fun sizeChange(before: Long, after: Long) =
     else after.kb()
 
 fun kbLabel(kb: Int) = if (kb >= 1000 && kb % 1000 == 0) "${kb / 1000} MB" else "$kb KB"
+
+/** Small preview bitmap (sampled decode). */
+fun Context.thumb(uri: Uri, maxPx: Int = 256): android.graphics.Bitmap? {
+    val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, o) }
+    var s = 1; while (maxOf(o.outWidth, o.outHeight) / (s * 2) >= maxPx) s *= 2
+    return contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, android.graphics.BitmapFactory.Options().apply { inSampleSize = s }) }
+}

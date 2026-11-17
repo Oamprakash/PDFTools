@@ -4,6 +4,8 @@ import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import android.net.Uri
@@ -101,6 +103,20 @@ class PdfOps(private val cr: ContentResolver) {
         val d = try { cr.openInputStream(src)!!.use { PDDocument.load(it, password, mem) } }
                 catch (e: InvalidPasswordException) { throw IllegalArgumentException("Wrong password") }
         d.use { it.isAllSecurityToBeRemoved = true; save(it, out) }
+    }
+
+    /** Front (+ optional back) of an ID card at real size, centred on one A4 page. */
+    fun idCard(front: Uri, back: Uri?, out: Uri) = PDDocument().use { doc ->
+        val page = PDPage(PDRectangle.A4).also(doc::addPage)
+        val cw = 85.6f * 72 / 25.4f; val ch = 53.98f * 72 / 25.4f // ISO/IEC 7810 ID-1, in points
+        val imgs = listOfNotNull(front, back).map { u -> decode(u, 1600).let { b -> JPEGFactory.createFromImage(doc, b, 0.9f).also { b.recycle() } } }
+        val sizes = imgs.map { if (it.height > it.width) ch to cw else cw to ch } // portrait cards stay portrait
+        val gap = 36f; val box = page.mediaBox
+        var y = (box.height + sizes.sumOf { it.second.toDouble() }.toFloat() + gap * (imgs.size - 1)) / 2
+        PDPageContentStream(doc, page).use { cs ->
+            imgs.zip(sizes).forEach { (img, s) -> y -= s.second; cs.drawImage(img, (box.width - s.first) / 2, y, s.first, s.second); y -= gap }
+        }
+        save(doc, out)
     }
 
     /** pages are 0-based. */
@@ -276,6 +292,16 @@ class PdfOps(private val cr: ContentResolver) {
         val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         cr.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, o) }
         var s = 1; while (maxOf(o.outWidth, o.outHeight) / (s * 2) >= maxPx) s *= 2
-        return cr.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = s })!! }
+        val bmp = cr.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = s })!! }
+        // Phone photos are often stored sideways with an EXIF rotation flag
+        val deg = runCatching {
+            when (cr.openInputStream(uri)!!.use { ExifInterface(it) }.getAttributeInt(ExifInterface.TAG_ORIENTATION, 1)) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90; ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270; else -> 0
+            }
+        }.getOrDefault(0)
+        if (deg == 0) return bmp
+        return Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, Matrix().apply { postRotate(deg.toFloat()) }, true)
+            .also { if (it !== bmp) bmp.recycle() }
     }
 }

@@ -47,6 +47,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                 }
                 PROTECT -> single { ops.protect(ins[0], out, password()) }
                 UNLOCK -> single { ops.unlock(ins[0], out, password()) }
+                ID_CARD -> single { ops.idCard(ins[0], ins.getOrNull(1), out) }
                 SPLIT -> ops.split(ins[0], ranges(), out, applicationContext.fileMeta(ins[0]).first.substringBeforeLast('.'))
                 else -> error("Unknown op $op")
             }
@@ -73,6 +74,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val TO_IMAGE = "PDF to images"; const val DPI = "dpi"; const val PNG = "png"; const val MIME = "mime"
         const val PROTECT = "Protect PDF"; const val UNLOCK = "Unlock PDF"; const val PW_KEY = "pwKey"
+        const val ID_CARD = "ID card to PDF"
         const val EXTRACT = "Extract pages"; const val ROTATE = "Rotate pages"
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"
 
