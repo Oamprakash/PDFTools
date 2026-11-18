@@ -32,17 +32,17 @@ fun SettingsScreen(back: () -> Unit) {
                 Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
             ) { Text("Enjoying the app?", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium); RemoveAdsButton() }
             SectionTitle("Support")
-            Item(Icons.Outlined.StarOutline, "Rate Pdfzy", "Takes 10 seconds and helps a lot") { Rating.openStore(ctx) }
+            Item(Icons.Outlined.StarOutline, "Rate PDFzy", "Takes 10 seconds and helps a lot") { Rating.openStore(ctx) }
             Item(Icons.Outlined.MailOutline, "Send feedback", "Found a problem or want a feature? Tell us") {
                 val body = "\n\n---\nApp $version · Android ${Build.VERSION.RELEASE} · ${Build.MANUFACTURER} ${Build.MODEL}"
                 runCatching {
                     ctx.startActivity(Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")).putExtra(Intent.EXTRA_EMAIL, arrayOf(Config.SUPPORT_EMAIL))
-                        .putExtra(Intent.EXTRA_SUBJECT, "Pdfzy feedback").putExtra(Intent.EXTRA_TEXT, body))
+                        .putExtra(Intent.EXTRA_SUBJECT, "PDFzy feedback").putExtra(Intent.EXTRA_TEXT, body))
                 }
             }
             Item(Icons.Outlined.Share, "Share the app", "Send it to friends who handle PDFs") {
                 ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT,
-                    "I use Pdfzy to scan, compress and merge PDFs offline: https://play.google.com/store/apps/details?id=${ctx.packageName}"), "Share"))
+                    "I use PDFzy to scan, compress and merge PDFs offline: https://play.google.com/store/apps/details?id=${ctx.packageName}"), "Share"))
             }
             SectionTitle("Privacy")
             Item(Icons.Outlined.Shield, "Privacy policy", "Your files are processed on this phone and never uploaded") { web(Config.PRIVACY_URL) }

@@ -47,7 +47,7 @@ fun HomeScreen(open: (String) -> Unit) {
     val recents by remember { dao.all() }.collectAsStateWithLifecycle(null)
     val nav = LocalNavigate.current
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Pdfzy", fontWeight = FontWeight.SemiBold) }, actions = {
+        TopAppBar(title = { Text("PDFzy", fontWeight = FontWeight.SemiBold) }, actions = {
             // Required by Google when the user is in a consent region: lets them change their ad choices
             if (Consent.privacyOptionsRequired.value)
                 IconButton({ Consent.showPrivacyOptions(ctx.findActivity()) }) { Icon(Icons.Outlined.PrivacyTip, "Privacy settings") }
