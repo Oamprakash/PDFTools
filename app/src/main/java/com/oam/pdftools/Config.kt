@@ -2,7 +2,7 @@ package com.oam.pdftools
 
 /** ⚠ Replace before release. */
 object Config {
-    const val PRIVACY_URL = "https://example.com/pdftools/privacy"   // TODO: your hosted privacy policy
+    const val PRIVACY_URL = "https://oamprakash.github.io/pdftools/privacy.html"   // GitHub Pages (docs/privacy.html)
     const val SUPPORT_EMAIL = "support@example.com"                  // TODO: your support address
 }
 
