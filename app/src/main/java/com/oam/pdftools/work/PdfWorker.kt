@@ -1,6 +1,13 @@
 package com.oam.pdftools.work
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import com.oam.pdftools.R
 import android.net.Uri
 import androidx.work.*
 import com.oam.pdftools.App
@@ -16,6 +23,8 @@ import java.util.UUID
 class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val op = inputData.getString(OP)!!
+        // Background start can be refused (Android 12+); the job still runs, just without the guarantee.
+        runCatching { setForeground(foregroundInfo(op)) }
         val ins = inputData.getStringArray(IN)!!.map(Uri::parse)
         val out = Uri.parse(inputData.getString(OUT))
         val ops = PdfOps(applicationContext.contentResolver)
@@ -65,11 +74,26 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     }
 
     private fun password() = Secrets.take(inputData.getString(PW_KEY)) ?: error("Session expired. Please try again.")
+    private fun foregroundInfo(op: String): ForegroundInfo {
+        val nm = applicationContext.getSystemService(NotificationManager::class.java)
+        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CHANNEL) == null)
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, "File processing", NotificationManager.IMPORTANCE_LOW))
+        val open = PendingIntent.getActivity(applicationContext, 0,
+            applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = NotificationCompat.Builder(applicationContext, CHANNEL)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome).setContentTitle("$op in progress…")
+            .setContentText("Your file is being processed on this phone").setProgress(0, 0, true)
+            .setOngoing(true).setSilent(true).setContentIntent(open).build()
+        return if (Build.VERSION.SDK_INT >= 29) ForegroundInfo(id.hashCode(), n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+               else ForegroundInfo(id.hashCode(), n)
+    }
+
     private fun pages() = inputData.getIntArray(PAGES)!!.toList()
     private fun ranges() = inputData.getIntArray(RANGES)!!.toList().chunked(2).map { it[0]..it[1] }
 
     companion object {
-        const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val STEP = "step"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"; const val ALLOW_RASTER = "allowRaster"
+        const val CHANNEL = "jobs"; const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val STEP = "step"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"; const val ALLOW_RASTER = "allowRaster"
         const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val TO_IMAGE = "PDF to images"; const val DPI = "dpi"; const val PNG = "png"; const val MIME = "mime"

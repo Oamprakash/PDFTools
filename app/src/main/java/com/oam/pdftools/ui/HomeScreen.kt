@@ -2,6 +2,9 @@ package com.oam.pdftools.ui
 
 import android.net.Uri
 import android.text.format.DateUtils
+import android.widget.Toast
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -116,9 +119,14 @@ private fun RecentRow(r: Recent) {
     val scope = rememberCoroutineScope()
     val uri = remember(r.uri) { Uri.parse(r.uri) }
     var menu by remember { mutableStateOf(false) }
+    // Opening/sharing a file that was deleted or moved elsewhere: tell the user and drop it from the list
+    fun ifExists(action: () -> Unit) = scope.launch {
+        if (withContext(Dispatchers.IO) { ctx.canOpen(uri) }) action()
+        else { Toast.makeText(ctx, "File not found. It was moved or deleted.", Toast.LENGTH_SHORT).show(); dao(ctx).remove(r.uri) }
+    }
     val time = DateUtils.getRelativeTimeSpanString(r.time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE)
     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow, border = cardBorder,
-        modifier = Modifier.clickable { ctx.openPdf(uri) }) {
+        modifier = Modifier.clickable { ifExists { ctx.openPdf(uri) } }) {
         Row(Modifier.fillMaxWidth().padding(start = 12.dp, top = 10.dp, bottom = 10.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ToolIcon("pdf", 40.dp)
@@ -127,12 +135,12 @@ private fun RecentRow(r: Recent) {
                 Text("${label(r.op)} · ${r.size.kb()} · $time", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            IconButton({ ctx.sharePdfs(listOf(uri)) }) { Icon(Icons.Outlined.Share, "Share") }
+            IconButton({ ifExists { ctx.sharePdfs(listOf(uri)) } }) { Icon(Icons.Outlined.Share, "Share") }
             Box {
                 IconButton({ menu = true }) { Icon(Icons.Outlined.MoreVert, "More") }
                 DropdownMenu(menu, { menu = false }) {
                     listOf(PdfWorker.COMPRESS, PdfWorker.PROTECT, PdfWorker.SPLIT, PdfWorker.TO_IMAGE).forEach { op ->
-                        DropdownMenuItem({ Text(label(op)) }, { menu = false; Incoming.uris = listOf(uri); nav(op) },
+                        DropdownMenuItem({ Text(label(op)) }, { menu = false; ifExists { Incoming.uris = listOf(uri); nav(op) } },
                             leadingIcon = { Icon(toolStyle(op).icon, null, tint = toolStyle(op).tint) })
                     }
                     HorizontalDivider()

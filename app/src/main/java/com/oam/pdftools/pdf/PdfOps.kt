@@ -260,7 +260,9 @@ class PdfOps(private val cr: ContentResolver) {
             val res = page.resources ?: continue
             for (name in res.xObjectNames) {
                 val x = res.getXObject(name) as? PDImageXObject ?: continue
+                if (x.cosObject.containsKey(COSName.SMASK) || x.cosObject.containsKey(COSName.MASK)) continue // has transparency
                 val bmp = x.image ?: continue
+                if (bmp.hasAlpha()) continue
                 val sc = minOf(1f, maxPx.toFloat() / maxOf(bmp.width, bmp.height))
                 val b = if (sc < 1f) Bitmap.createScaledBitmap(bmp, (bmp.width * sc).toInt(), (bmp.height * sc).toInt(), true) else bmp
                 res.put(name, JPEGFactory.createFromImage(d, b, quality))

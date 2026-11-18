@@ -46,3 +46,6 @@ fun Context.thumb(uri: Uri, maxPx: Int = 256): android.graphics.Bitmap? {
 
 tailrec fun Context.findActivity(): android.app.Activity =
     this as? android.app.Activity ?: (this as android.content.ContextWrapper).baseContext.findActivity()
+
+/** True if the file behind [uri] can still be opened (it may have been deleted or moved elsewhere). */
+fun Context.canOpen(uri: Uri) = runCatching { contentResolver.openFileDescriptor(uri, "r")?.use { true } ?: false }.getOrDefault(false)

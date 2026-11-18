@@ -1,6 +1,10 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Long jobs run as a foreground service so Android doesn't stop them when the user leaves the app -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <application android:name=".App" android:label="PDF Tools" android:icon="@mipmap/ic_launcher"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/Theme.PdfTools">
         <!-- ⚠ Google TEST app ID. Replace with your AdMob app ID before release. -->
         <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-3940256099942544~3347511713" />
@@ -22,5 +26,7 @@
                 <data android:scheme="content" android:mimeType="application/pdf" />
             </intent-filter>
         </activity>
+        <service android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync" tools:node="merge" />
     </application>
 </manifest>
