@@ -1,4 +1,4 @@
-# PDF Tools
+# Pdfzy
 
 Offline Android PDF toolkit (Kotlin + Compose): images to PDF, merge, compress, extract and rotate pages, recents. PDF engine: PdfBox-Android. Background work: WorkManager. Storage: Room.
 

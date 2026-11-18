@@ -2,21 +2,21 @@
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
     <shortcut android:shortcutId="scan" android:enabled="true" android:icon="@drawable/ic_shortcut_scan"
         android:shortcutShortLabel="@string/sc_scan" android:shortcutLongLabel="@string/sc_scan">
-        <intent android:action="com.oam.pdftools.OPEN_TOOL" android:targetPackage="com.oam.pdftools"
+        <intent android:action="com.oam.pdftools.OPEN_TOOL" android:targetPackage="com.oam.pdfzy"
             android:targetClass="com.oam.pdftools.ui.MainActivity">
             <extra android:name="op" android:value="Scan document" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="compress" android:enabled="true" android:icon="@drawable/ic_shortcut_compress"
         android:shortcutShortLabel="@string/sc_compress" android:shortcutLongLabel="@string/sc_compress">
-        <intent android:action="com.oam.pdftools.OPEN_TOOL" android:targetPackage="com.oam.pdftools"
+        <intent android:action="com.oam.pdftools.OPEN_TOOL" android:targetPackage="com.oam.pdfzy"
             android:targetClass="com.oam.pdftools.ui.MainActivity">
             <extra android:name="op" android:value="Compress PDF" />
         </intent>
     </shortcut>
     <shortcut android:shortcutId="images" android:enabled="true" android:icon="@drawable/ic_shortcut_images"
         android:shortcutShortLabel="@string/sc_images" android:shortcutLongLabel="@string/sc_images">
-        <intent android:action="com.oam.pdftools.OPEN_TOOL" android:targetPackage="com.oam.pdftools"
+        <intent android:action="com.oam.pdftools.OPEN_TOOL" android:targetPackage="com.oam.pdfzy"
             android:targetClass="com.oam.pdftools.ui.MainActivity">
             <extra android:name="op" android:value="Images to PDF" />
         </intent>
