@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oamsapps.pdfzy.*
 import com.oamsapps.pdfzy.ads.Consent
+import com.oamsapps.pdfzy.ads.BannerAd
 import com.oamsapps.pdfzy.ads.NativeAdCard
 import com.oamsapps.pdfzy.billing.RemoveAdsButton
 import com.oamsapps.pdfzy.data.Recent
@@ -61,6 +62,7 @@ fun HomeScreen(open: (String) -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             full { PrivacyNote() }
             items(HERO, span = { GridItemSpan(3) }) { HeroCard(it) { open(it) } }
+            full("banner") { BannerAd() } // between the hero cards and More tools; never inside the file list
             full { SectionTitle("More tools") }
             items(MORE, span = { GridItemSpan(2) }) { ToolTile(it) { open(it) } }
             full("ad") { NativeAdCard(Modifier.padding(top = 4.dp)) }
