@@ -3,8 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose"); id("com.google.devtools.ksp")
 }
 android {
-    namespace = "com.oam.pdftools"; compileSdk = 35
-    defaultConfig { applicationId = "com.oam.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 1; versionName = "1.0" }
+    namespace = "com.oamsapps.pdfzy"; compileSdk = 35
+    defaultConfig { applicationId = "com.oamsapps.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 1; versionName = "1.0" }
     buildFeatures { compose = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
