@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
 import android.content.pm.ApplicationInfo
 import android.util.Log
@@ -53,8 +54,10 @@ fun NativeAdCard(modifier: Modifier = Modifier) {
         Ads.nativeError.value?.let { if (debug) Text("Ad not loaded ($it)", modifier, style = MaterialTheme.typography.bodySmall) }
         return
     }
-    OutlinedCard(modifier.fillMaxWidth()) {
-        key(a) { AndroidView(::buildAdView, Modifier.fillMaxWidth()) { v -> bind(v, a) } }
+    val c = MaterialTheme.colorScheme
+    val colors = AdColors(c.onSurface.toArgb(), c.onSurfaceVariant.toArgb(), c.primary.toArgb(), c.onPrimary.toArgb())
+    OutlinedCard(modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = c.surfaceContainerLow)) {
+        key(a) { AndroidView(::buildAdView, Modifier.fillMaxWidth()) { v -> bind(v, a, colors) } }
     }
 }
 
@@ -69,7 +72,10 @@ private fun buildAdView(c: Context): NativeAdView {
         textSize = 15f; setTypeface(null, Typeface.BOLD); maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setPadding(dp(6), 0, 0, 0)
     }
     val body = TextView(c).apply { textSize = 13f; maxLines = 2; ellipsize = TextUtils.TruncateAt.END }
-    val cta = Button(c).apply { isAllCaps = false }
+    val cta = TextView(c).apply { // pill button styled from the app theme (a platform Button ignores dark mode here)
+        textSize = 14f; setPadding(dp(14), dp(8), dp(14), dp(8)); gravity = Gravity.CENTER
+        layoutParams = LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { marginStart = dp(8) }
+    }
     val titleRow = LinearLayout(c).apply { gravity = Gravity.CENTER_VERTICAL; addView(badge); addView(headline) }
     val texts = LinearLayout(c).apply {
         orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f)
@@ -85,10 +91,19 @@ private fun buildAdView(c: Context): NativeAdView {
     }
 }
 
-private fun bind(v: NativeAdView, ad: NativeAd) {
+private data class AdColors(val text: Int, val sub: Int, val accent: Int, val onAccent: Int)
+
+private fun bind(v: NativeAdView, ad: NativeAd, k: AdColors) {
+    val d = v.resources.displayMetrics.density
+    (v.headlineView as TextView).setTextColor(k.text)
+    (v.bodyView as TextView).setTextColor(k.sub)
+    (v.callToActionView as TextView).apply {
+        setTextColor(k.onAccent)
+        background = android.graphics.drawable.GradientDrawable().apply { setColor(k.accent); cornerRadius = 100 * d }
+    }
     (v.headlineView as TextView).text = ad.headline
     (v.bodyView as TextView).apply { text = ad.body; visibility = if (ad.body == null) android.view.View.GONE else android.view.View.VISIBLE }
-    (v.callToActionView as Button).apply { text = ad.callToAction; visibility = if (ad.callToAction == null) android.view.View.GONE else android.view.View.VISIBLE }
+    (v.callToActionView as TextView).apply { text = ad.callToAction; visibility = if (ad.callToAction == null) android.view.View.GONE else android.view.View.VISIBLE }
     (v.iconView as ImageView).apply { setImageDrawable(ad.icon?.drawable); visibility = if (ad.icon == null) android.view.View.GONE else android.view.View.VISIBLE }
     v.setNativeAd(ad)
 }
