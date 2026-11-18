@@ -28,11 +28,14 @@ import java.util.UUID
  * - Native: one card on Home (see NativeAdCard).
  */
 object Ads {
-    // ⚠ Google TEST IDs. Replace all four (incl. APPLICATION_ID in AndroidManifest.xml) before release.
-    const val NATIVE = "ca-app-pub-3940256099942544/2247696110"
-    const val BANNER = "ca-app-pub-3940256099942544/9214589741"
-    private const val INTERSTITIAL = "ca-app-pub-3940256099942544/1033173712"
-    private const val REWARDED = "ca-app-pub-3940256099942544/5224354917"
+    // Real ad units in release builds; Google's test units in debug builds, so testing on your own
+    // phone never counts as invalid traffic (clicking your own live ads can get the AdMob account banned).
+    private val debug by lazy { (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+    private fun id(real: String, test: String) = if (debug) test else real
+    val NATIVE get() = id("ca-app-pub-7771213920148056/1474542695", "ca-app-pub-3940256099942544/2247696110")
+    val BANNER get() = id("ca-app-pub-7771213920148056/3841685731", "ca-app-pub-3940256099942544/9214589741")
+    private val INTERSTITIAL get() = id("ca-app-pub-7771213920148056/8375827112", "ca-app-pub-3940256099942544/1033173712")
+    private val REWARDED get() = id("ca-app-pub-7771213920148056/2787624368", "ca-app-pub-3940256099942544/5224354917")
 
     private const val FREE_TASKS = 2
     private const val COOLDOWN_MS = 210_000L // 3.5 min
