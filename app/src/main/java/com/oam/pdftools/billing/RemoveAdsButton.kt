@@ -13,6 +13,9 @@ fun RemoveAdsButton() {
     when {
         Billing.adFree.value -> { Text("Ad-free ✓", style = MaterialTheme.typography.labelMedium); return }
         Billing.pending.value -> { Text("Payment pending…", style = MaterialTheme.typography.labelMedium); return }
+        // Product not available yet (merchant account pending / product not created): hide the button entirely.
+        // It appears automatically, without an app update, once the product goes live in Play Console.
+        Billing.price.value == null -> return
     }
     TextButton({ open = true; unavailable = false }) { Text("Remove ads") }
     if (open) AlertDialog(
