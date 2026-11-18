@@ -48,6 +48,13 @@ object Ads {
     fun init(ctx: Context) {
         app = ctx.applicationContext
         prefs = app.getSharedPreferences("ads", Context.MODE_PRIVATE)
+    }
+
+    private val started = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Starts the SDK and preloads ads. Call only once consent allows it (see Consent). Safe to call repeatedly. */
+    fun start() {
+        if (!started.compareAndSet(false, true)) return
         CoroutineScope(Dispatchers.IO).launch {
             MobileAds.initialize(app) { s -> android.util.Log.d("Ads", "Init: ${s.adapterStatusMap.mapValues { it.value.initializationState }}") }
             withContext(Dispatchers.Main) { loadInterstitial(); loadRewarded(); loadNative() }
@@ -94,7 +101,7 @@ object Ads {
 
     /** Native ads expire after ~1 h; refresh when Home is shown and the ad is old or missing. */
     fun refreshNativeIfStale() {
-        if (!::app.isInitialized) return
+        if (!started.get()) return
         if (native.value == null || SystemClock.elapsedRealtime() - nativeAt > 50 * 60_000L) loadNative()
     }
 
@@ -105,7 +112,7 @@ object Ads {
         prefs.edit().putInt("tasks", n).apply()
         val now = SystemClock.elapsedRealtime()
         if (n <= FREE_TASKS || (lastFullScreen != 0L && now - lastFullScreen < COOLDOWN_MS)) return
-        val ad = interstitial ?: return loadInterstitial()
+        val ad = interstitial ?: run { if (started.get()) loadInterstitial(); return }
         interstitial = null; lastFullScreen = now
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdDismissedFullScreenContent() = loadInterstitial()
@@ -119,7 +126,7 @@ object Ads {
 
     /** Shows a rewarded ad; runs [onGranted] if earned, or right away if no ad is available. */
     fun showRewarded(activity: Activity, onGranted: () -> Unit) {
-        val ad = rewarded ?: run { loadRewarded(); onGranted(); return }
+        val ad = rewarded ?: run { if (started.get()) loadRewarded(); onGranted(); return }
         rewarded = null; lastFullScreen = SystemClock.elapsedRealtime() // no interstitial right after
         var earned = false
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {

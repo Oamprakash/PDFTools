@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.oam.pdftools.*
+import com.oam.pdftools.ads.Consent
 import com.oam.pdftools.ads.NativeAdCard
 import com.oam.pdftools.billing.RemoveAdsButton
 import com.oam.pdftools.data.Recent
@@ -45,7 +46,12 @@ fun HomeScreen(open: (String) -> Unit) {
     val dao = remember { (ctx.applicationContext as App).db.recents() }
     val recents by remember { dao.all() }.collectAsStateWithLifecycle(null)
     Scaffold(topBar = {
-        TopAppBar(title = { Text("PDF Tools", fontWeight = FontWeight.SemiBold) }, actions = { RemoveAdsButton(); Spacer(Modifier.width(8.dp)) })
+        TopAppBar(title = { Text("PDF Tools", fontWeight = FontWeight.SemiBold) }, actions = {
+            // Required by Google when the user is in a consent region: lets them change their ad choices
+            if (Consent.privacyOptionsRequired.value)
+                IconButton({ Consent.showPrivacyOptions(ctx.findActivity()) }) { Icon(Icons.Outlined.PrivacyTip, "Privacy settings") }
+            RemoveAdsButton(); Spacer(Modifier.width(8.dp))
+        })
     }) { pad ->
         // 6-column grid: hero cards span 3 (two per row), small tiles span 2 (three per row)
         LazyVerticalGrid(GridCells.Fixed(6), Modifier.fillMaxSize().padding(pad),

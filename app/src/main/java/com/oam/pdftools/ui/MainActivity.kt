@@ -12,6 +12,8 @@ import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.*
 import com.oam.pdftools.Incoming
+import com.oam.pdftools.ads.Ads
+import com.oam.pdftools.ads.Consent
 import com.oam.pdftools.billing.Billing
 import com.oam.pdftools.importShared
 import com.oam.pdftools.work.PdfWorker
@@ -23,7 +25,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(s: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(s)
-        if (s == null) handle(intent)
+        if (s == null) { handle(intent); Consent.gather(this) { Ads.start() } }
         setContent {
             AppTheme {
                 val nav = rememberNavController()
