@@ -8,6 +8,8 @@ import android.view.Gravity
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.*
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -106,4 +108,31 @@ private fun bind(v: NativeAdView, ad: NativeAd, k: AdColors) {
     (v.callToActionView as TextView).apply { text = ad.callToAction; visibility = if (ad.callToAction == null) android.view.View.GONE else android.view.View.VISIBLE }
     (v.iconView as ImageView).apply { setImageDrawable(ad.icon?.drawable); visibility = if (ad.icon == null) android.view.View.GONE else android.view.View.VISIBLE }
     v.setNativeAd(ad)
+}
+
+/**
+ * Adaptive banner for tool screens. Sits at the top of the content, away from the action buttons
+ * pinned at the bottom (AdMob policy: no ads where accidental taps are likely). Hidden for ad-free users
+ * and until consent allows ads; takes no space if no ad loads.
+ */
+@Composable
+fun BannerAd(modifier: Modifier = Modifier) {
+    if (Billing.adFree.value || !Ads.ready.value) return
+    val ctx = LocalContext.current
+    val widthDp = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp - 32 // screen padding
+    var loaded by remember { mutableStateOf(false) }
+    val view = remember {
+        com.google.android.gms.ads.AdView(ctx).apply {
+            adUnitId = Ads.BANNER
+            setAdSize(com.google.android.gms.ads.AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(ctx, widthDp))
+            adListener = object : AdListener() {
+                override fun onAdLoaded() { loaded = true }
+                override fun onAdFailedToLoad(e: LoadAdError) { Log.w("Ads", "Banner failed: ${e.code} ${e.message}") }
+            }
+            loadAd(AdRequest.Builder().build())
+        }
+    }
+    DisposableEffect(Unit) { onDispose { view.destroy() } }
+    // Keep it in the layout so it can load, but at zero height until an ad arrives
+    AndroidView({ view }, if (loaded) modifier.fillMaxWidth() else Modifier.height(0.dp))
 }

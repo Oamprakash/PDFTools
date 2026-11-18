@@ -67,6 +67,7 @@ fun ToolLayout(
     title: String, onBack: () -> Unit,
     actions: @Composable RowScope.() -> Unit = {},
     bottom: (@Composable RowScope.() -> Unit)? = null,
+    showAd: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) = Scaffold(
     topBar = {
@@ -87,8 +88,11 @@ fun ToolLayout(
 ) { pad ->
     Column(
         Modifier.fillMaxSize().padding(pad).imePadding().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp), content = content
-    )
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (showAd) com.oam.pdftools.ads.BannerAd()
+        content()
+    }
 }
 
 @Composable

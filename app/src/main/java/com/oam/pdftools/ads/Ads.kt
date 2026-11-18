@@ -30,6 +30,7 @@ import java.util.UUID
 object Ads {
     // ⚠ Google TEST IDs. Replace all four (incl. APPLICATION_ID in AndroidManifest.xml) before release.
     const val NATIVE = "ca-app-pub-3940256099942544/2247696110"
+    const val BANNER = "ca-app-pub-3940256099942544/9214589741"
     private const val INTERSTITIAL = "ca-app-pub-3940256099942544/1033173712"
     private const val REWARDED = "ca-app-pub-3940256099942544/5224354917"
 
@@ -54,11 +55,14 @@ object Ads {
     private val started = java.util.concurrent.atomic.AtomicBoolean(false)
 
     /** Starts the SDK and preloads ads. Call only once consent allows it (see Consent). Safe to call repeatedly. */
+    /** True once the SDK is started (consent allows ads). Compose state, so banners appear as soon as it flips. */
+    val ready = mutableStateOf(false)
+
     fun start() {
         if (!started.compareAndSet(false, true)) return
         CoroutineScope(Dispatchers.IO).launch {
             MobileAds.initialize(app) { s -> android.util.Log.d("Ads", "Init: ${s.adapterStatusMap.mapValues { it.value.initializationState }}") }
-            withContext(Dispatchers.Main) { loadInterstitial(); loadRewarded(); loadNative() }
+            withContext(Dispatchers.Main) { ready.value = true; loadInterstitial(); loadRewarded(); loadNative() }
         }
     }
 

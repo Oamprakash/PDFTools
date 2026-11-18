@@ -26,7 +26,7 @@ fun SettingsScreen(back: () -> Unit) {
     val ctx = LocalContext.current
     val version = remember { runCatching { ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName }.getOrNull() ?: "" }
     fun web(url: String) = runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-    ToolLayout("Settings", back) {
+    ToolLayout("Settings", back, showAd = false) {
         Column(Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!Billing.adFree.value && Billing.price.value != null) Row(
                 Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically
