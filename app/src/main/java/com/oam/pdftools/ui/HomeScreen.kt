@@ -45,12 +45,14 @@ fun HomeScreen(open: (String) -> Unit) {
     val ctx = LocalContext.current
     val dao = remember { (ctx.applicationContext as App).db.recents() }
     val recents by remember { dao.all() }.collectAsStateWithLifecycle(null)
+    val nav = LocalNavigate.current
     Scaffold(topBar = {
         TopAppBar(title = { Text("PDF Tools", fontWeight = FontWeight.SemiBold) }, actions = {
             // Required by Google when the user is in a consent region: lets them change their ad choices
             if (Consent.privacyOptionsRequired.value)
                 IconButton({ Consent.showPrivacyOptions(ctx.findActivity()) }) { Icon(Icons.Outlined.PrivacyTip, "Privacy settings") }
-            RemoveAdsButton(); Spacer(Modifier.width(8.dp))
+            RemoveAdsButton()
+            IconButton({ nav("settings") }) { Icon(Icons.Outlined.Settings, "Settings") }
         })
     }) { pad ->
         // 6-column grid: hero cards span 3 (two per row), small tiles span 2 (three per row)

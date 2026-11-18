@@ -15,6 +15,7 @@ import com.google.android.gms.ads.nativead.NativeAdOptions
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
+import com.oam.pdftools.Rating
 import com.oam.pdftools.billing.Billing
 import com.oam.pdftools.work.PdfWorker
 import kotlinx.coroutines.*
@@ -107,9 +108,10 @@ object Ads {
 
     /** Call when a job succeeds. Counts the task once and maybe shows an interstitial. */
     fun onTaskCompleted(activity: Activity, jobId: UUID) {
-        if (Billing.adFree.value || !counted.add(jobId)) return
+        if (!counted.add(jobId)) return
         val n = prefs.getInt("tasks", 0) + 1
         prefs.edit().putInt("tasks", n).apply()
+        if (Rating.maybeAsk(activity, n) || Billing.adFree.value) return // never stack a review and an ad
         val now = SystemClock.elapsedRealtime()
         if (n <= FREE_TASKS || (lastFullScreen != 0L && now - lastFullScreen < COOLDOWN_MS)) return
         val ad = interstitial ?: run { if (started.get()) loadInterstitial(); return }

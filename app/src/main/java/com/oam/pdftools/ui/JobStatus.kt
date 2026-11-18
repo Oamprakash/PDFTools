@@ -27,7 +27,9 @@ fun JobStatus(info: WorkInfo?) {
     val ctx = LocalContext.current
     val nav = LocalNavigate.current
     when (info?.state) {
-        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> Card(
+        WorkInfo.State.RUNNING, WorkInfo.State.ENQUEUED -> {
+            AskNotificationsOnce()
+            Card(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), border = cardBorder
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -35,6 +37,7 @@ fun JobStatus(info: WorkInfo?) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Hint(info.progress.getString(PdfWorker.STEP) ?: "You can leave this screen. It keeps going in the background.")
             }
+        }
         }
         WorkInfo.State.SUCCEEDED -> {
             val act = ctx.findActivity()
@@ -90,5 +93,22 @@ fun JobStatus(info: WorkInfo?) {
             }
         }
         else -> {}
+    }
+}
+
+/** Android 13+: ask once, while a job runs, so we can say "Your PDF is ready" if the user switches apps. */
+@Composable
+private fun AskNotificationsOnce() {
+    if (android.os.Build.VERSION.SDK_INT < 33) return
+    val ctx = LocalContext.current
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        val prefs = ctx.getSharedPreferences("perm", android.content.Context.MODE_PRIVATE)
+        val granted = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (!granted && !prefs.getBoolean("askedNotif", false)) {
+            prefs.edit().putBoolean("askedNotif", true).apply()
+            launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 }

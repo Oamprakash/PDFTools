@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.*
+import com.oam.pdftools.AppState
 import com.oam.pdftools.Incoming
 import com.oam.pdftools.ads.Ads
 import com.oam.pdftools.ads.Consent
@@ -32,9 +33,10 @@ class MainActivity : ComponentActivity() {
                 val route by pendingRoute
                 LaunchedEffect(route) { route?.let { nav.navigate(it) { popUpTo("home") }; pendingRoute.value = null } }
                 val back: () -> Unit = { nav.popBackStack() }
-                CompositionLocalProvider(LocalNavigate provides { op: String -> nav.navigate("tool/$op") }) {
+                CompositionLocalProvider(LocalNavigate provides { r: String -> nav.navigate(if (r == "settings") r else "tool/$r") }) {
                 NavHost(nav, "home") {
                     composable("home") { HomeScreen { Incoming.uris = emptyList(); nav.navigate("tool/$it") } }
+                    composable("settings") { SettingsScreen(back) }
                     composable("open") { OpenWithScreen({ nav.navigate("tool/$it") }, back) }
                     composable("tool/{op}") {
                         when (val op = it.arguments!!.getString("op")!!) {
@@ -51,11 +53,17 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onResume() { super.onResume(); Billing.refresh() }
+    override fun onStart() { super.onStart(); AppState.visible = true }
+    override fun onStop() { super.onStop(); AppState.visible = false }
 
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); handle(intent) }
 
     /** Share sheet (SEND / SEND_MULTIPLE) and "Open with" (VIEW). */
     private fun handle(intent: Intent?) {
+        if (intent?.action == "com.oam.pdftools.OPEN_TOOL") { // app shortcut
+            intent.getStringExtra("op")?.let { Incoming.uris = emptyList(); pendingRoute.value = "tool/$it" }
+            return
+        }
         val uris: List<Uri> = when (intent?.action) {
             Intent.ACTION_SEND -> listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java))
             Intent.ACTION_SEND_MULTIPLE -> IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty()

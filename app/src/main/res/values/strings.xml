@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sc_scan">Scan document</string>
+    <string name="sc_compress">Compress PDF</string>
+    <string name="sc_images">Images to PDF</string>
+</resources>

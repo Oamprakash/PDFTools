@@ -11,6 +11,8 @@ import com.oam.pdftools.R
 import android.net.Uri
 import androidx.work.*
 import com.oam.pdftools.App
+import com.oam.pdftools.AppState
+import com.oam.pdftools.kb
 import com.oam.pdftools.Secrets
 import com.oam.pdftools.data.Recent
 import com.oam.pdftools.fileMeta
@@ -66,6 +68,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                 val (name, size) = applicationContext.fileMeta(it); outSize += size
                 if (op != TO_IMAGE) dao.put(Recent(it.toString(), name, op, size)) // Recents = PDFs only
             }
+            if (!AppState.visible) notifyDone(op, outs.size, applicationContext.fileMeta(outs.first()).first, outSize)
             Data.Builder().putAll(extra).putAll(workDataOf(
                 IN_SIZE to if (op == TO_IMAGE) 0L else ins.sumOf { applicationContext.fileMeta(it).second }, OUT_SIZE to outSize,
                 OUTS to outs.take(50).map(Uri::toString).toTypedArray() // Data is capped at 10 KB
@@ -87,6 +90,21 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
             .setOngoing(true).setSilent(true).setContentIntent(open).build()
         return if (Build.VERSION.SDK_INT >= 29) ForegroundInfo(id.hashCode(), n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
                else ForegroundInfo(id.hashCode(), n)
+    }
+
+    /** "Your PDF is ready" when the job finishes while the user is in another app. Tapping opens the app (result is in Recent). */
+    private fun notifyDone(op: String, count: Int, name: String, size: Long) {
+        if (Build.VERSION.SDK_INT >= 33 && applicationContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+            != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        foregroundInfo(op) // ensures the channel exists
+        val open = PendingIntent.getActivity(applicationContext, 1,
+            applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val n = NotificationCompat.Builder(applicationContext, CHANNEL)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(if (count > 1) "$count files ready" else if (op == TO_IMAGE) "Images ready" else "Your PDF is ready")
+            .setContentText("$name · ${size.kb()}").setAutoCancel(true).setContentIntent(open).build()
+        androidx.core.app.NotificationManagerCompat.from(applicationContext).notify(id.hashCode() + 1, n)
     }
 
     private fun pages() = inputData.getIntArray(PAGES)!!.toList()
