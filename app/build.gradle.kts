@@ -6,8 +6,8 @@ android {
     namespace = "com.oamsapps.pdfzy"; compileSdk = 35
     defaultConfig {
         applicationId = "com.oamsapps.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 1; versionName = "1.0"
-        // Closed-testing bundles: ./gradlew bundleRelease -PtestAds=true  → Google test ads in a release build
-        buildConfigField("boolean", "TEST_ADS", (project.findProperty("testAds") == "true").toString())
+        // testAds flag lives in gradle.properties (true = Google test ads in release builds; false for production)
+        buildConfigField("boolean", "TEST_ADS", (project.findProperty("testAds")?.toString()?.toBoolean() ?: false).toString())
     }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
