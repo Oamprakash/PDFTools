@@ -30,7 +30,10 @@ import java.util.UUID
 object Ads {
     // Real ad units in release builds; Google's test units in debug builds, so testing on your own
     // phone never counts as invalid traffic (clicking your own live ads can get the AdMob account banned).
-    private val debug by lazy { (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0 }
+    // Test ads for debug builds and for release bundles built with -PtestAds=true (closed testing)
+    private val debug by lazy {
+        com.oamsapps.pdfzy.BuildConfig.TEST_ADS || (app.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+    }
     private fun id(real: String, test: String) = if (debug) test else real
     val NATIVE get() = id("ca-app-pub-7771213920148056/1474542695", "ca-app-pub-3940256099942544/2247696110")
     val BANNER get() = id("ca-app-pub-7771213920148056/3841685731", "ca-app-pub-3940256099942544/9214589741")

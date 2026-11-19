@@ -4,8 +4,12 @@ plugins {
 }
 android {
     namespace = "com.oamsapps.pdfzy"; compileSdk = 35
-    defaultConfig { applicationId = "com.oamsapps.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 1; versionName = "1.0" }
-    buildFeatures { compose = true }
+    defaultConfig {
+        applicationId = "com.oamsapps.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 1; versionName = "1.0"
+        // Closed-testing bundles: ./gradlew bundleRelease -PtestAds=true  → Google test ads in a release build
+        buildConfigField("boolean", "TEST_ADS", (project.findProperty("testAds") == "true").toString())
+    }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     buildTypes { release { isMinifyEnabled = true; proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro") } }

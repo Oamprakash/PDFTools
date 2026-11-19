@@ -52,6 +52,12 @@ fun actionLabel(op: String) = when (op) {
     PdfWorker.UNLOCK -> "Unlock"; else -> "Create PDF"
 }
 
+/** Filter chip whose selected state is obvious: solid brand blue with white text. */
+@Composable
+fun AppChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, enabled: Boolean = true) =
+    FilterChip(selected, onClick, label, enabled = enabled, colors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.primary, selectedLabelColor = MaterialTheme.colorScheme.onPrimary))
+
 @Composable
 fun ToolIcon(op: String, size: Dp = 44.dp) {
     val s = toolStyle(op)

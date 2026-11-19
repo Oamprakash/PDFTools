@@ -79,7 +79,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
         OutlinedButton(pickMore, Modifier.weight(1f)) {
             Text(when { items.isEmpty() -> if (isScan) "Scan" else "Select"; !multi -> "Change"; isScan -> "Scan more"; else -> "Add more" })
         }
-        Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(op, items.size)) { save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") } },
+        Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(op, items.size)) { save.launch(ctx.outputName(op, items, targetKb?.let { kbLabel(it).replace(" ", "") })) } },
             Modifier.weight(1f), enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text(actionLabel(op)) }
     }) {
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 16.dp)) {

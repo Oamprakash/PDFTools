@@ -18,6 +18,7 @@ import androidx.work.WorkManager
 import com.oamsapps.pdfzy.ads.Ads
 import com.oamsapps.pdfzy.ads.rememberRewardGate
 import com.oamsapps.pdfzy.fileMeta
+import com.oamsapps.pdfzy.plural
 import com.oamsapps.pdfzy.Incoming
 import com.oamsapps.pdfzy.pdf.PdfThumbs
 import com.oamsapps.pdfzy.work.PdfWorker
@@ -73,7 +74,7 @@ fun SplitScreen(back: () -> Unit) {
             src == null -> EmptyState(PdfWorker.SPLIT, "Pick a PDF to split", "Split every few pages, or by your own page ranges.")
             count == null -> Hint("Can't open this PDF. If it's password-protected, use Unlock first.", error = true)
             else -> {
-                FileRow(name.orEmpty(), "$count pages")
+                FileRow(name.orEmpty(), plural(count, "page"))
                 SectionTitle("Split by")
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(every, { every = true }); Text("Every")
@@ -85,7 +86,7 @@ fun SplitScreen(back: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(!every, { every = false }); Text("Custom ranges") }
                 if (!every) OutlinedTextField(custom, { custom = it }, Modifier.fillMaxWidth(), singleLine = true,
                     label = { Text("e.g. 1-3, 4, 5-10") })
-                if (ranges != null) Hint("Will create ${ranges.size} file(s)") else Hint("Enter valid pages (1–$count)", error = true)
+                if (ranges != null) Hint("Will create ${plural(ranges.size, "file")}") else Hint("Enter valid pages (1–$count)", error = true)
             }
         }
     }

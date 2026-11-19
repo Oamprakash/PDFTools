@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.oamsapps.pdfzy.outputName
 import com.oamsapps.pdfzy.thumb
 import com.oamsapps.pdfzy.work.PdfWorker
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +47,7 @@ fun IdCardScreen(back: () -> Unit) {
     }.collectAsStateWithLifecycle(null)
 
     ToolLayout(PdfWorker.ID_CARD, back, bottom = {
-        Button({ save.launch("ID_card_${System.currentTimeMillis()}.pdf") }, Modifier.weight(1f),
+        Button({ save.launch(ctx.outputName(PdfWorker.ID_CARD, emptyList())) }, Modifier.weight(1f),
             enabled = front != null && info?.state != WorkInfo.State.RUNNING) { Text("Create PDF") }
     }) {
         JobStatus(info)

@@ -49,3 +49,26 @@ tailrec fun Context.findActivity(): android.app.Activity =
 
 /** True if the file behind [uri] can still be opened (it may have been deleted or moved elsewhere). */
 fun Context.canOpen(uri: Uri) = runCatching { contentResolver.openFileDescriptor(uri, "r")?.use { true } ?: false }.getOrDefault(false)
+
+/** "1 page" / "3 pages" */
+fun plural(n: Int, word: String) = "$n $word" + if (n == 1) "" else "s"
+
+/**
+ * Readable default names instead of timestamps: Resume_2026_merged.pdf, Scanned_documents_200KB.pdf,
+ * Scan_2026-11-20_1432.pdf. The system file picker adds " (1)" if the name already exists.
+ */
+fun Context.outputName(op: String, sources: List<Uri>, tag: String? = null): String {
+    val stamp = java.text.SimpleDateFormat("yyyy-MM-dd_HHmm", java.util.Locale.US).format(java.util.Date())
+    val base = sources.firstOrNull()?.let { fileMeta(it).first.substringBeforeLast('.') }
+        ?.replace(Regex("[^A-Za-z0-9._-]+"), "_")?.trim('_')?.takeIf { it.isNotEmpty() }
+    val W = com.oamsapps.pdfzy.work.PdfWorker
+    return when (op) {
+        W.SCAN -> "Scan_$stamp"
+        W.IMG -> "Images_$stamp"
+        W.ID_CARD -> "ID_card_$stamp"
+        else -> (base ?: "PDFzy_$stamp") + "_" + when (op) {
+            W.COMPRESS -> tag ?: "compressed"; W.MERGE -> "merged"; W.EXTRACT -> "pages"; W.ROTATE -> "rotated"
+            W.PROTECT -> "protected"; W.UNLOCK -> "unlocked"; else -> "edited"
+        }
+    } + ".pdf"
+}

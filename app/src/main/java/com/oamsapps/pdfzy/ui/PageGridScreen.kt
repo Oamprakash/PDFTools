@@ -22,6 +22,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.oamsapps.pdfzy.Incoming
+import com.oamsapps.pdfzy.outputName
+import com.oamsapps.pdfzy.plural
 import com.oamsapps.pdfzy.ads.Ads
 import com.oamsapps.pdfzy.ads.rememberRewardGate
 import com.oamsapps.pdfzy.pdf.PdfThumbs
@@ -81,14 +83,14 @@ fun PageGridScreen(op: String, back: () -> Unit) {
                 val n = if (sel.isEmpty()) thumbs?.count ?: 0 else sel.size
                 gate(Ads.needsReward(op, n), Ads.gateText(op, n)) { folder.launch(null) }
             }, Modifier.weight(1f), enabled = thumbs != null && !busy) {
-                Text(if (sel.isEmpty()) "Export all pages" else "Export ${sel.size} page(s)")
+                Text(if (sel.isEmpty()) "Export all pages" else "Export ${plural(sel.size, "page")}")
             } else {
                 if (isRotate) {
                     FilledTonalIconButton({ turn(-90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateLeft, "Rotate left") }
                     FilledTonalIconButton({ turn(90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateRight, "Rotate right") }
                 }
                 val ready = if (isRotate) rot.isNotEmpty() else sel.isNotEmpty()
-                Button({ save.launch("${op.replace(' ', '_')}_${System.currentTimeMillis()}.pdf") }, Modifier.weight(1f),
+                Button({ save.launch(ctx.outputName(op, listOfNotNull(src))) }, Modifier.weight(1f),
                     enabled = ready && !busy) { Text("Save PDF") }
             }
         }) {
@@ -98,7 +100,7 @@ fun PageGridScreen(op: String, back: () -> Unit) {
             thumbs == null -> Hint("Can't open this PDF. If it's password-protected, use Unlock first.", error = true)
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isImage && sel.isEmpty()) "All ${thumbs.count} pages" else "${sel.size} of ${thumbs.count} selected",
+                    Text(if (isImage && sel.isEmpty()) "All ${plural(thumbs.count, "page")}" else "${sel.size} of ${thumbs.count} selected",
                         Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
                     TextButton({ sel.clear(); sel += 0 until thumbs.count }) { Text("All") }
                     TextButton({ sel.clear() }) { Text("None") }
@@ -107,8 +109,8 @@ fun PageGridScreen(op: String, back: () -> Unit) {
                     PdfWorker.EXTRACT -> Hint("Tap the pages to keep. They'll be saved as a new PDF.")
                     PdfWorker.ROTATE -> Hint("Tap pages, then rotate. With nothing selected, all pages rotate.")
                     else -> Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(!png, { png = false }, { Text("JPG") }); FilterChip(png, { png = true }, { Text("PNG") })
-                        FilterChip(!hiRes, { hiRes = false }, { Text("Standard") }); FilterChip(hiRes, { hiRes = true }, { Text("High quality") })
+                        AppChip(!png, { png = false }, { Text("JPG") }); AppChip(png, { png = true }, { Text("PNG") })
+                        AppChip(!hiRes, { hiRes = false }, { Text("Standard") }); AppChip(hiRes, { hiRes = true }, { Text("High quality") })
                     }
                 }
                 LazyVerticalGrid(GridCells.Adaptive(104.dp), Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp),
