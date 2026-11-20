@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -67,19 +69,19 @@ fun ToolScreen(op: String, back: () -> Unit) {
         else pickPdf.launch(arrayOf("application/pdf"))
     }
     val (emptyTitle, emptyHint) = when (op) {
-        PdfWorker.SCAN -> "Scan your document" to "Pages are auto-cropped and cleaned up. Scan as many as you need."
-        PdfWorker.IMG -> "Add photos" to "Pick images from your gallery. You can reorder them before creating the PDF."
-        PdfWorker.MERGE -> "Add PDFs to merge" to "Tip: long-press a file in the picker to select several at once."
-        PdfWorker.COMPRESS -> "Pick a PDF to compress" to "Choose an exact size like 200 KB for job, exam and form uploads."
-        PdfWorker.PROTECT -> "Pick a PDF to protect" to "Add a password before sharing bank statements, ID copies and more."
-        PdfWorker.UNLOCK -> "Pick a locked PDF" to "Remove the password from a PDF you're allowed to open."
-        else -> "Pick a file" to ""
+        PdfWorker.SCAN -> stringResource(R.string.empty_scan_t) to stringResource(R.string.empty_scan_h)
+        PdfWorker.IMG -> stringResource(R.string.empty_img_t) to stringResource(R.string.empty_img_h)
+        PdfWorker.MERGE -> stringResource(R.string.empty_merge_t) to stringResource(R.string.empty_merge_h)
+        PdfWorker.COMPRESS -> stringResource(R.string.empty_compress_t) to stringResource(R.string.empty_compress_h)
+        PdfWorker.PROTECT -> stringResource(R.string.empty_protect_t) to stringResource(R.string.empty_protect_h)
+        PdfWorker.UNLOCK -> stringResource(R.string.empty_unlock_t) to stringResource(R.string.empty_unlock_h)
+        else -> stringResource(R.string.empty_default_t) to ""
     }
     ToolLayout(op, back, bottom = {
         OutlinedButton(pickMore, Modifier.weight(1f)) {
-            Text(when { items.isEmpty() -> if (isScan) "Scan" else "Select"; !multi -> "Change"; isScan -> "Scan more"; else -> "Add more" })
+            Text(when { items.isEmpty() -> if (isScan) stringResource(R.string.btn_scan) else stringResource(R.string.btn_select); !multi -> stringResource(R.string.btn_change); isScan -> stringResource(R.string.btn_scan_more); else -> stringResource(R.string.btn_add_more) })
         }
-        Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(op, items.size)) { save.launch(ctx.outputName(op, items, targetKb?.let { kbLabel(it).replace(" ", "") })) } },
+        Button({ gate(Ads.needsReward(op, items.size), Ads.gateText(ctx, op, items.size)) { save.launch(ctx.outputName(op, items, targetKb?.let { kbLabel(it).replace(" ", "") })) } },
             Modifier.weight(1f), enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text(actionLabel(op)) }
     }) {
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
@@ -93,7 +95,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
                     onRemove = { items.removeAt(i) })
             }
             if (op == PdfWorker.MERGE && items.isNotEmpty()) item {
-                Hint(if (items.size == 1) "Add at least one more PDF (long-press in the picker to pick several)." else "Use the arrows to set the order.")
+                Hint(if (items.size == 1) stringResource(R.string.merge_need_one) else stringResource(R.string.merge_order))
             }
             if (op == PdfWorker.COMPRESS && items.isNotEmpty()) item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -106,17 +108,17 @@ fun ToolScreen(op: String, back: () -> Unit) {
                     val a = analysis
                     val floor = a?.takeIf { it.textOnly }?.minLossless // only text-only files have a hard floor
                     when {
-                        a == null -> Hint("Checking file…")
-                        floor != null -> Hint("Text-only PDF · ${a.pages} pages. Smallest size without losing quality: about ${floor.kb()}")
+                        a == null -> Hint(stringResource(R.string.checking_file))
+                        floor != null -> Hint(stringResource(R.string.text_only_floor, pluralRes(R.plurals.pages_count, a.pages), floor.kb()))
                     }
                     TargetPicker(targetKb, floor) { targetKb = it }
                     targetKb?.let { t ->
-                        if (floor != null && t * 1000L < floor) Hint("${kbLabel(t)} isn't realistic for this file. You'll get about ${floor.kb()}.", error = true)
-                        else if (srcSize != null && srcSize <= t * 1000L) Hint("Already under ${kbLabel(t)}. It will be saved as is.")
+                        if (floor != null && t * 1000L < floor) Hint(stringResource(R.string.unrealistic, kbLabel(t), floor.kb()), error = true)
+                        else if (srcSize != null && srcSize <= t * 1000L) Hint(stringResource(R.string.already_under, kbLabel(t)))
                     }
                     if (targetKb != null) Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                         Checkbox(allowRaster, { allowRaster = it })
-                        Text("Allow lower quality (text may look blurry)", style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.allow_lower), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }

@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -18,7 +20,6 @@ import androidx.work.WorkManager
 import com.oamsapps.pdfzy.ads.Ads
 import com.oamsapps.pdfzy.ads.rememberRewardGate
 import com.oamsapps.pdfzy.fileMeta
-import com.oamsapps.pdfzy.plural
 import com.oamsapps.pdfzy.Incoming
 import com.oamsapps.pdfzy.pdf.PdfThumbs
 import com.oamsapps.pdfzy.work.PdfWorker
@@ -63,30 +64,30 @@ fun SplitScreen(back: () -> Unit) {
     }.collectAsStateWithLifecycle(null)
 
     ToolLayout(PdfWorker.SPLIT, back,
-        actions = { if (src != null) TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text("Change file") } },
+        actions = { if (src != null) TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text(stringResource(R.string.change_file)) } },
         bottom = {
-            if (src == null) Button({ pick.launch(arrayOf("application/pdf")) }, Modifier.weight(1f)) { Text("Select PDF") }
-            else Button({ val n = ranges?.size ?: 0; gate(Ads.needsReward(PdfWorker.SPLIT, n), Ads.gateText(PdfWorker.SPLIT, n)) { folder.launch(null) } },
-                Modifier.weight(1f), enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text("Choose folder & split") }
+            if (src == null) Button({ pick.launch(arrayOf("application/pdf")) }, Modifier.weight(1f)) { Text(stringResource(R.string.select_pdf)) }
+            else Button({ val n = ranges?.size ?: 0; gate(Ads.needsReward(PdfWorker.SPLIT, n), Ads.gateText(ctx, PdfWorker.SPLIT, n)) { folder.launch(null) } },
+                Modifier.weight(1f), enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text(stringResource(R.string.choose_folder_split)) }
         }) {
         JobStatus(info)
         when {
-            src == null -> EmptyState(PdfWorker.SPLIT, "Pick a PDF to split", "Split every few pages, or by your own page ranges.")
-            count == null -> Hint("Can't open this PDF. If it's password-protected, use Unlock first.", error = true)
+            src == null -> EmptyState(PdfWorker.SPLIT, stringResource(R.string.empty_split_t), stringResource(R.string.empty_split_h))
+            count == null -> Hint(stringResource(R.string.cant_open_pdf), error = true)
             else -> {
-                FileRow(name.orEmpty(), plural(count, "page"))
-                SectionTitle("Split by")
+                FileRow(name.orEmpty(), pluralRes(R.plurals.pages_count, count))
+                SectionTitle(stringResource(R.string.split_by))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(every, { every = true }); Text("Every")
+                    RadioButton(every, { every = true }); Text(stringResource(R.string.every))
                     Spacer(Modifier.width(8.dp))
                     OutlinedTextField(n, { n = it.filter(Char::isDigit).take(4); every = true }, Modifier.width(80.dp), singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                    Spacer(Modifier.width(8.dp)); Text("pages")
+                    Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.pages_word))
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(!every, { every = false }); Text("Custom ranges") }
+                Row(verticalAlignment = Alignment.CenterVertically) { RadioButton(!every, { every = false }); Text(stringResource(R.string.custom_ranges)) }
                 if (!every) OutlinedTextField(custom, { custom = it }, Modifier.fillMaxWidth(), singleLine = true,
-                    label = { Text("e.g. 1-3, 4, 5-10") })
-                if (ranges != null) Hint("Will create ${plural(ranges.size, "file")}") else Hint("Enter valid pages (1–$count)", error = true)
+                    label = { Text(stringResource(R.string.ranges_example)) })
+                if (ranges != null) Hint(pluralRes(R.plurals.will_create, ranges.size)) else Hint(stringResource(R.string.enter_valid, count), error = true)
             }
         }
     }

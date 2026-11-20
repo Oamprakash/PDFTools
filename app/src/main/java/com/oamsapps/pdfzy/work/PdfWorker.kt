@@ -1,5 +1,6 @@
 package com.oamsapps.pdfzy.work
 
+import com.oamsapps.pdfzy.ui.opLabel
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -29,7 +30,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         runCatching { setForeground(foregroundInfo(op)) }
         val ins = inputData.getStringArray(IN)!!.map(Uri::parse)
         val out = Uri.parse(inputData.getString(OUT))
-        val ops = PdfOps(applicationContext.contentResolver)
+        val ops = PdfOps(applicationContext.contentResolver, applicationContext.resources)
         var extra = Data.EMPTY
         fun single(block: () -> Unit) = block().let { listOf(out) }
         runCatching {
@@ -76,17 +77,17 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         }.fold({ Result.success(it) }, { Result.failure(workDataOf("err" to it.message)) })
     }
 
-    private fun password() = Secrets.take(inputData.getString(PW_KEY)) ?: error("Session expired. Please try again.")
+    private fun password() = Secrets.take(inputData.getString(PW_KEY)) ?: error(applicationContext.getString(R.string.session_expired))
     private fun foregroundInfo(op: String): ForegroundInfo {
         val nm = applicationContext.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CHANNEL) == null)
-            nm.createNotificationChannel(NotificationChannel(CHANNEL, "File processing", NotificationManager.IMPORTANCE_LOW))
+            nm.createNotificationChannel(NotificationChannel(CHANNEL, applicationContext.getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(applicationContext, 0,
             applicationContext.packageManager.getLaunchIntentForPackage(applicationContext.packageName),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(applicationContext, CHANNEL)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome).setContentTitle("$op in progress…")
-            .setContentText("Your file is being processed on this phone").setProgress(0, 0, true)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome).setContentTitle(applicationContext.getString(R.string.notif_progress, applicationContext.opLabel(op)))
+            .setContentText(applicationContext.getString(R.string.notif_progress_text)).setProgress(0, 0, true)
             .setOngoing(true).setSilent(true).setContentIntent(open).build()
         return if (Build.VERSION.SDK_INT >= 29) ForegroundInfo(id.hashCode(), n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
                else ForegroundInfo(id.hashCode(), n)
@@ -102,7 +103,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val n = NotificationCompat.Builder(applicationContext, CHANNEL)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle(if (count > 1) "$count files ready" else if (op == TO_IMAGE) "Images ready" else "Your PDF is ready")
+            .setContentTitle(applicationContext.run { if (count > 1) resources.getQuantityString(R.plurals.notif_files_ready, count, count) else getString(if (op == TO_IMAGE) R.string.notif_images_ready else R.string.notif_pdf_ready) })
             .setContentText("$name · ${size.kb()}").setAutoCancel(true).setContentIntent(open).build()
         androidx.core.app.NotificationManagerCompat.from(applicationContext).notify(id.hashCode() + 1, n)
     }

@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -34,10 +36,10 @@ fun PasswordInput(protect: Boolean, uri: Uri?, onChange: (String?) -> Unit) {
 
     val note = when {
         uri == null -> null
-        lock == null -> "Checking file…"
-        protect && lock != PdfOps.Lock.NONE -> "This PDF is already protected. Unlock it first."
-        !protect && lock == PdfOps.Lock.NONE -> "This PDF isn't password-protected."
-        !protect && lock == PdfOps.Lock.OWNER_ONLY -> "Only editing/printing is restricted. No password needed, just tap Create."
+        lock == null -> stringResource(R.string.checking_file)
+        protect && lock != PdfOps.Lock.NONE -> stringResource(R.string.pw_already)
+        !protect && lock == PdfOps.Lock.NONE -> stringResource(R.string.pw_not_protected)
+        !protect && lock == PdfOps.Lock.OWNER_ONLY -> stringResource(R.string.pw_owner_only)
         else -> null
     }
     note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = if (blocked && lock != null) MaterialTheme.colorScheme.error else LocalContentColor.current) }
@@ -46,10 +48,10 @@ fun PasswordInput(protect: Boolean, uri: Uri?, onChange: (String?) -> Unit) {
     val vt = if (show) VisualTransformation.None else PasswordVisualTransformation()
     val ko = KeyboardOptions(keyboardType = KeyboardType.Password)
     OutlinedTextField(pw, { pw = it }, Modifier.fillMaxWidth(), singleLine = true, visualTransformation = vt, keyboardOptions = ko,
-        label = { Text("Password") }, trailingIcon = { TextButton({ show = !show }) { Text(if (show) "Hide" else "Show") } })
+        label = { Text(stringResource(R.string.password)) }, trailingIcon = { TextButton({ show = !show }) { Text(if (show) stringResource(R.string.hide) else stringResource(R.string.show)) } })
     if (protect) {
         OutlinedTextField(pw2, { pw2 = it }, Modifier.fillMaxWidth(), singleLine = true, visualTransformation = vt, keyboardOptions = ko,
-            label = { Text("Confirm password") }, isError = pw2.isNotEmpty() && pw2 != pw)
-        Text("At least 4 characters. AES-256. If you forget it, the file can't be recovered.", style = MaterialTheme.typography.bodySmall)
+            label = { Text(stringResource(R.string.confirm_password)) }, isError = pw2.isNotEmpty() && pw2 != pw)
+        Text(stringResource(R.string.pw_rules), style = MaterialTheme.typography.bodySmall)
     }
 }

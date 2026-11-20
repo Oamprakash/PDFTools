@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import android.text.format.DateUtils
 import android.widget.Toast
@@ -47,12 +49,12 @@ fun HomeScreen(open: (String) -> Unit) {
     val recents by remember { dao.all() }.collectAsStateWithLifecycle(null)
     val nav = LocalNavigate.current
     Scaffold(topBar = {
-        TopAppBar(title = { Text("PDFzy", fontWeight = FontWeight.SemiBold) }, actions = {
+        TopAppBar(title = { Text(stringResource(R.string.app_name), fontWeight = FontWeight.SemiBold) }, actions = {
             // Required by Google when the user is in a consent region: lets them change their ad choices
             if (Consent.privacyOptionsRequired.value)
-                IconButton({ Consent.showPrivacyOptions(ctx.findActivity()) }) { Icon(Icons.Outlined.PrivacyTip, "Privacy settings") }
+                IconButton({ Consent.showPrivacyOptions(ctx.findActivity()) }) { Icon(Icons.Outlined.PrivacyTip, stringResource(R.string.privacy_settings)) }
             RemoveAdsButton()
-            IconButton({ nav("settings") }) { Icon(Icons.Outlined.Settings, "Settings") }
+            IconButton({ nav("settings") }) { Icon(Icons.Outlined.Settings, stringResource(R.string.settings)) }
         })
     }) { pad ->
         // 6-column grid: hero cards span 3 (two per row), small tiles span 2 (three per row)
@@ -62,9 +64,9 @@ fun HomeScreen(open: (String) -> Unit) {
             full { PrivacyNote() }
             items(HERO, span = { GridItemSpan(3) }) { HeroCard(it) { open(it) } }
             full("ad") { NativeAdCard() } // one native ad between the hero cards and More tools; never inside the file list
-            full { SectionTitle("More tools") }
+            full { SectionTitle(stringResource(R.string.more_tools)) }
             items(MORE, span = { GridItemSpan(2) }) { ToolTile(it) { open(it) } }
-            full { SectionTitle("Recent files") }
+            full { SectionTitle(stringResource(R.string.recent_files)) }
             val list = recents
             when {
                 list == null -> {}
@@ -82,7 +84,7 @@ private fun PrivacyNote() = Row(
     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)
 ) {
     Icon(Icons.Outlined.Shield, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
-    Text("Your files are processed on this phone and never uploaded.", style = MaterialTheme.typography.bodySmall)
+    Text(stringResource(R.string.privacy_note), style = MaterialTheme.typography.bodySmall)
 }
 
 @Composable
@@ -93,7 +95,7 @@ private fun HeroCard(op: String, onClick: () -> Unit) = Card(
         ToolIcon(op)
         Column {
             Text(label(op), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(toolStyle(op).desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(stringResource(toolStyle(op).desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
@@ -114,8 +116,8 @@ private fun ToolTile(op: String, onClick: () -> Unit) = Card(
 private fun RecentEmpty() = Column(Modifier.fillMaxWidth().padding(vertical = 24.dp),
     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Icon(Icons.Outlined.FolderOpen, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text("No files yet", style = MaterialTheme.typography.titleSmall)
-    Text("Files you create show up here, ready to open or share.", style = MaterialTheme.typography.bodySmall,
+    Text(stringResource(R.string.no_files), style = MaterialTheme.typography.titleSmall)
+    Text(stringResource(R.string.no_files_hint), style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
 }
 
@@ -130,7 +132,7 @@ private fun RecentRow(r: Recent) {
     // Opening/sharing a file that was deleted or moved elsewhere: tell the user and drop it from the list
     fun ifExists(action: () -> Unit) = scope.launch {
         if (withContext(Dispatchers.IO) { ctx.canOpen(uri) }) action()
-        else { Toast.makeText(ctx, "File not found. It was moved or deleted.", Toast.LENGTH_SHORT).show(); dao(ctx).remove(r.uri) }
+        else { Toast.makeText(ctx, ctx.getString(R.string.file_not_found), Toast.LENGTH_SHORT).show(); dao(ctx).remove(r.uri) }
     }
     val time = DateUtils.getRelativeTimeSpanString(r.time, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE)
     Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow, border = cardBorder,
@@ -143,16 +145,16 @@ private fun RecentRow(r: Recent) {
                 Text("${label(r.op)} · ${r.size.kb()} · $time", style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            IconButton({ ifExists { ctx.sharePdfs(listOf(uri)) } }) { Icon(Icons.Outlined.Share, "Share") }
+            IconButton({ ifExists { ctx.sharePdfs(listOf(uri)) } }) { Icon(Icons.Outlined.Share, stringResource(R.string.share)) }
             Box {
-                IconButton({ menu = true }) { Icon(Icons.Outlined.MoreVert, "More") }
+                IconButton({ menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more)) }
                 DropdownMenu(menu, { menu = false }) {
                     listOf(PdfWorker.COMPRESS, PdfWorker.PROTECT, PdfWorker.SPLIT, PdfWorker.TO_IMAGE).forEach { op ->
                         DropdownMenuItem({ Text(label(op)) }, { menu = false; ifExists { Incoming.uris = listOf(uri); nav(op) } },
                             leadingIcon = { Icon(toolStyle(op).icon, null, tint = toolStyle(op).tint) })
                     }
                     HorizontalDivider()
-                    DropdownMenuItem({ Text("Remove from list") }, { menu = false; scope.launch { dao(ctx).remove(r.uri) } },
+                    DropdownMenuItem({ Text(stringResource(R.string.remove_from_list)) }, { menu = false; scope.launch { dao(ctx).remove(r.uri) } },
                         leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null) })
                 }
             }

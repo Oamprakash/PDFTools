@@ -1,5 +1,6 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -42,7 +43,7 @@ fun rememberScanner(pageLimit: Int? = null, onError: (String) -> Unit, onPages: 
                 .build()
             GmsDocumentScanning.getClient(opts).getStartScanIntent(ctx.findActivity())
                 .addOnSuccessListener { launcher.launch(IntentSenderRequest.Builder(it).build()) }
-                .addOnFailureListener { err("Scanner unavailable on this device (${it.message}).") }
+                .addOnFailureListener { err(ctx.getString(R.string.scanner_unavailable, it.message ?: "")) }
         }
     }
 }

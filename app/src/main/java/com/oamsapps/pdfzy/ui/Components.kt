@@ -1,5 +1,8 @@
 package com.oamsapps.pdfzy.ui
 
+import androidx.compose.ui.platform.LocalContext
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -23,34 +26,46 @@ import com.oamsapps.pdfzy.work.PdfWorker
 /** Navigate to a tool (keeps Incoming files). Provided by MainActivity. */
 val LocalNavigate = staticCompositionLocalOf<(String) -> Unit> { {} }
 
-data class ToolStyle(val icon: ImageVector, val tint: Color, val desc: String)
+data class ToolStyle(val icon: ImageVector, val tint: Color, @androidx.annotation.StringRes val desc: Int)
 
 @Suppress("DEPRECATION")
 fun toolStyle(op: String) = when (op) {
-    PdfWorker.SCAN -> ToolStyle(Icons.Outlined.DocumentScanner, Color(0xFF2F5BEA), "Paper to clean PDF")
-    PdfWorker.IMG -> ToolStyle(Icons.Outlined.Image, Color(0xFF0E9F6E), "Photos & screenshots")
-    PdfWorker.ID_CARD -> ToolStyle(Icons.Outlined.Badge, Color(0xFF7C5CDB), "Both sides on one page")
-    PdfWorker.COMPRESS -> ToolStyle(Icons.Outlined.Compress, Color(0xFFE8710A), "Shrink to an exact size")
-    PdfWorker.MERGE -> ToolStyle(Icons.Outlined.CallMerge, Color(0xFF2F5BEA), "Combine PDFs into one")
-    PdfWorker.SPLIT -> ToolStyle(Icons.Outlined.CallSplit, Color(0xFF0E9F6E), "Break into smaller PDFs")
-    PdfWorker.EXTRACT -> ToolStyle(Icons.Outlined.ContentCut, Color(0xFF7C5CDB), "Keep only some pages")
-    PdfWorker.ROTATE -> ToolStyle(Icons.Outlined.RotateRight, Color(0xFF0B8FAC), "Fix sideways pages")
-    PdfWorker.TO_IMAGE -> ToolStyle(Icons.Outlined.PhotoLibrary, Color(0xFFD6336C), "Save pages as JPG/PNG")
-    PdfWorker.PROTECT -> ToolStyle(Icons.Outlined.Lock, Color(0xFF5B6475), "Add a password")
-    PdfWorker.UNLOCK -> ToolStyle(Icons.Outlined.LockOpen, Color(0xFF5B6475), "Remove a password")
-    else -> ToolStyle(Icons.Outlined.PictureAsPdf, Color(0xFFD93025), "")
+    PdfWorker.SCAN -> ToolStyle(Icons.Outlined.DocumentScanner, Color(0xFF2F5BEA), R.string.desc_scan)
+    PdfWorker.IMG -> ToolStyle(Icons.Outlined.Image, Color(0xFF0E9F6E), R.string.desc_img)
+    PdfWorker.ID_CARD -> ToolStyle(Icons.Outlined.Badge, Color(0xFF7C5CDB), R.string.desc_id)
+    PdfWorker.COMPRESS -> ToolStyle(Icons.Outlined.Compress, Color(0xFFE8710A), R.string.desc_compress)
+    PdfWorker.MERGE -> ToolStyle(Icons.Outlined.CallMerge, Color(0xFF2F5BEA), R.string.desc_merge)
+    PdfWorker.SPLIT -> ToolStyle(Icons.Outlined.CallSplit, Color(0xFF0E9F6E), R.string.desc_split)
+    PdfWorker.EXTRACT -> ToolStyle(Icons.Outlined.ContentCut, Color(0xFF7C5CDB), R.string.desc_extract)
+    PdfWorker.ROTATE -> ToolStyle(Icons.Outlined.RotateRight, Color(0xFF0B8FAC), R.string.desc_rotate)
+    PdfWorker.TO_IMAGE -> ToolStyle(Icons.Outlined.PhotoLibrary, Color(0xFFD6336C), R.string.desc_to_image)
+    PdfWorker.PROTECT -> ToolStyle(Icons.Outlined.Lock, Color(0xFF5B6475), R.string.desc_protect)
+    PdfWorker.UNLOCK -> ToolStyle(Icons.Outlined.LockOpen, Color(0xFF5B6475), R.string.desc_unlock)
+    else -> ToolStyle(Icons.Outlined.PictureAsPdf, Color(0xFFD93025), R.string.app_name)
 }
 
-fun label(op: String) = when (op) {
-    PdfWorker.SCAN -> "Scan document"; PdfWorker.MERGE -> "Merge"; PdfWorker.SPLIT -> "Split"
-    PdfWorker.COMPRESS -> "Compress"; PdfWorker.ROTATE -> "Rotate"; PdfWorker.EXTRACT -> "Extract pages"
-    PdfWorker.PROTECT -> "Protect"; PdfWorker.UNLOCK -> "Unlock"; else -> op
+fun opLabelRes(op: String): Int = when (op) {
+    PdfWorker.SCAN -> R.string.op_scan; PdfWorker.IMG -> R.string.op_img; PdfWorker.ID_CARD -> R.string.op_id
+    PdfWorker.COMPRESS -> R.string.op_compress; PdfWorker.MERGE -> R.string.op_merge; PdfWorker.SPLIT -> R.string.op_split
+    PdfWorker.EXTRACT -> R.string.op_extract; PdfWorker.ROTATE -> R.string.op_rotate; PdfWorker.TO_IMAGE -> R.string.op_to_image
+    PdfWorker.PROTECT -> R.string.op_protect; PdfWorker.UNLOCK -> R.string.op_unlock; else -> 0
 }
 
-fun actionLabel(op: String) = when (op) {
-    PdfWorker.COMPRESS -> "Compress"; PdfWorker.MERGE -> "Merge"; PdfWorker.PROTECT -> "Protect"
-    PdfWorker.UNLOCK -> "Unlock"; else -> "Create PDF"
-}
+/** Localized tool name; op ids stay English internally (routes, Recents, WorkManager data). Non-op strings pass through. */
+fun android.content.Context.opLabel(op: String) = opLabelRes(op).let { if (it == 0) op else getString(it) }
+
+@Composable
+fun label(op: String): String = LocalContext.current.opLabel(op)
+
+@Composable
+fun actionLabel(op: String) = stringResource(when (op) {
+    PdfWorker.COMPRESS -> R.string.op_compress; PdfWorker.MERGE -> R.string.op_merge
+    PdfWorker.PROTECT -> R.string.op_protect; PdfWorker.UNLOCK -> R.string.op_unlock; else -> R.string.act_create
+})
+
+/** "1 page" / "5 pages" in the user's language (plural rules differ per language). */
+@Composable
+fun pluralRes(id: Int, n: Int): String = LocalContext.current.resources.getQuantityString(id, n, n)
 
 /** Filter chip whose selected state is obvious: solid brand blue with white text. */
 @Composable
@@ -79,7 +94,7 @@ fun ToolLayout(
     topBar = {
         TopAppBar(
             title = { Text(label(title), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-            navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+            navigationIcon = { IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back)) } },
             actions = actions
         )
     },
@@ -133,8 +148,8 @@ fun FileRow(name: String, sub: String?, image: Boolean = false,
                 Text(name, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 sub?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
-            onUp?.let { IconButton(it) { Icon(Icons.Outlined.ArrowUpward, "Move up") } }
-            onDown?.let { IconButton(it) { Icon(Icons.Outlined.ArrowDownward, "Move down") } }
-            onRemove?.let { IconButton(it) { Icon(Icons.Outlined.Close, "Remove") } }
+            onUp?.let { IconButton(it) { Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.move_up)) } }
+            onDown?.let { IconButton(it) { Icon(Icons.Outlined.ArrowDownward, stringResource(R.string.move_down)) } }
+            onRemove?.let { IconButton(it) { Icon(Icons.Outlined.Close, stringResource(R.string.remove)) } }
         }
     }

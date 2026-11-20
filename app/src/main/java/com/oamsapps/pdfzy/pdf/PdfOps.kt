@@ -1,5 +1,6 @@
 package com.oamsapps.pdfzy.pdf
 
+import com.oamsapps.pdfzy.R
 import android.content.ContentResolver
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -25,7 +26,7 @@ import java.io.File
 import java.util.zip.Deflater
 
 /** All ops stream through temp files so big PDFs don't OOM on low-RAM phones. */
-class PdfOps(private val cr: ContentResolver) {
+class PdfOps(private val cr: ContentResolver, private val res: android.content.res.Resources? = null) {
     private val mem get() = MemoryUsageSetting.setupTempFileOnly()
     private fun load(uri: Uri) = cr.openInputStream(uri)!!.use { PDDocument.load(it, mem) }
     private fun save(doc: PDDocument, out: Uri) = cr.openOutputStream(out, "wt")!!.use { doc.save(it) }
@@ -101,7 +102,7 @@ class PdfOps(private val cr: ContentResolver) {
     /** Removes the password (blank works for PDFs that only restrict editing/printing). */
     fun unlock(src: Uri, out: Uri, password: String) {
         val d = try { cr.openInputStream(src)!!.use { PDDocument.load(it, password, mem) } }
-                catch (e: InvalidPasswordException) { throw IllegalArgumentException("Wrong password") }
+                catch (e: InvalidPasswordException) { throw IllegalArgumentException(res?.getString(R.string.wrong_password) ?: "Wrong password") }
         d.use { it.isAllSecurityToBeRemoved = true; save(it, out) }
     }
 
@@ -192,7 +193,7 @@ class PdfOps(private val cr: ContentResolver) {
         if (orig.length() <= target) return finish(true)
 
         // Step 0: lossless. Many generated PDFs (FPDF, some scanners) store page streams uncompressed.
-        onStep("Compressing without quality loss…")
+        onStep(res?.getString(R.string.step_lossless) ?: "…")
         val lossless = File(tmp, "lossless.pdf")
         val (pages, hasImages) = PDDocument.load(orig, mem).use { d ->
             deflateStreams(d); d.save(lossless)
@@ -202,7 +203,7 @@ class PdfOps(private val cr: ContentResolver) {
         if (best.length() <= target) return finish(true)
         val base = best
 
-        onStep("Analysing sample pages…")
+        onStep(res?.getString(R.string.step_sample) ?: "…")
         val sample = if (pages <= 4) base else File(tmp, "sample.pdf").also { f ->
             PDDocument.load(base, mem).use { s ->
                 PDDocument().use { d -> listOf(0, pages / 2, pages - 1).forEach { d.importPage(s.getPage(it)) }; d.save(f) }
@@ -229,7 +230,7 @@ class PdfOps(private val cr: ContentResolver) {
             }
             while (true) {
                 n++
-                onStep(if (m == Mode.RASTER) "Converting pages to images (pass $n)…" else "Compressing images (pass $n)…")
+                onStep(res?.getString(if (m == Mode.RASTER) R.string.step_raster else R.string.step_images, n) ?: "…")
                 val f = File(tmp, "full$n.pdf"); apply(m, ladder[i], base, f)
                 val size = f.length()
                 if (size < best.length()) { if (best != base) best.delete(); best = f; mode = m } else f.delete()

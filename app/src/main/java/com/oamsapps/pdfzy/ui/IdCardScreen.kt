@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
@@ -48,12 +50,12 @@ fun IdCardScreen(back: () -> Unit) {
 
     ToolLayout(PdfWorker.ID_CARD, back, bottom = {
         Button({ save.launch(ctx.outputName(PdfWorker.ID_CARD, emptyList())) }, Modifier.weight(1f),
-            enabled = front != null && info?.state != WorkInfo.State.RUNNING) { Text("Create PDF") }
+            enabled = front != null && info?.state != WorkInfo.State.RUNNING) { Text(stringResource(R.string.act_create)) }
     }) {
         JobStatus(info)
-        Hint("Scan each side. The card is auto-cropped, cleaned up and placed at real size (85.6 × 54 mm) on one A4 page, ready to print.")
-        CardSlot("Front", front, scanFront) { front = null }
-        CardSlot("Back (optional)", rear, scanBack) { rear = null }
+        Hint(stringResource(R.string.id_hint))
+        CardSlot(stringResource(R.string.front), front, scanFront) { front = null }
+        CardSlot(stringResource(R.string.back_optional), rear, scanBack) { rear = null }
         error?.let { Hint(it, error = true) }
     }
 }
@@ -73,8 +75,8 @@ private fun CardSlot(label: String, uri: Uri?, scan: () -> Unit, clear: () -> Un
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.titleSmall)
                 Row {
-                    TextButton(scan) { Text(if (uri == null) "Scan" else "Rescan") }
-                    if (uri != null) TextButton(clear) { Text("Remove") }
+                    TextButton(scan) { Text(if (uri == null) stringResource(R.string.btn_scan) else stringResource(R.string.btn_rescan)) }
+                    if (uri != null) TextButton(clear) { Text(stringResource(R.string.remove)) }
                 }
             }
         }

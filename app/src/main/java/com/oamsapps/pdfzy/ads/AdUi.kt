@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ads
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Typeface
@@ -36,9 +38,9 @@ fun rememberRewardGate(): (Boolean, String, () -> Unit) -> Unit {
     pending?.let { (msg, go) ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text("Unlock this batch") }, text = { Text(msg) },
-            confirmButton = { TextButton({ pending = null; Ads.showRewarded(act, go) }) { Text("Watch video") } },
-            dismissButton = { TextButton({ pending = null }) { Text("Cancel") } }
+            title = { Text(stringResource(R.string.unlock_batch)) }, text = { Text(msg) },
+            confirmButton = { TextButton({ pending = null; Ads.showRewarded(act, go) }) { Text(stringResource(R.string.watch_video)) } },
+            dismissButton = { TextButton({ pending = null }) { Text(stringResource(R.string.cancel)) } }
         )
     }
     return remember { { gated, msg, go -> if (gated) pending = msg to go else go() } }
@@ -68,7 +70,7 @@ private fun buildAdView(c: Context): NativeAdView {
     fun dp(x: Int) = (x * d).toInt()
     val icon = ImageView(c).apply { layoutParams = LinearLayout.LayoutParams(dp(44), dp(44)).apply { marginEnd = dp(12) } }
     val badge = TextView(c).apply {
-        text = "Ad"; textSize = 11f; setTextColor(Color.WHITE); setBackgroundColor(0xFFB8860B.toInt()); setPadding(dp(4), 0, dp(4), 0)
+        text = c.getString(R.string.ad_badge); textSize = 11f; setTextColor(Color.WHITE); setBackgroundColor(0xFFB8860B.toInt()); setPadding(dp(4), 0, dp(4), 0)
     }
     val headline = TextView(c).apply {
         textSize = 15f; setTypeface(null, Typeface.BOLD); maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setPadding(dp(6), 0, 0, 0)

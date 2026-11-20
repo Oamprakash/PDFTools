@@ -1,5 +1,6 @@
 package com.oamsapps.pdfzy.ads
 
+import com.oamsapps.pdfzy.R
 import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
@@ -134,7 +135,7 @@ object Ads {
     }
 
     fun needsReward(op: String, count: Int) = !Billing.adFree.value && count > (FREE_LIMIT[op] ?: Int.MAX_VALUE)
-    fun gateText(op: String, count: Int) = "Up to ${FREE_LIMIT[op]} at once is free. Watch a short video to process all $count."
+    fun gateText(ctx: Context, op: String, count: Int) = ctx.getString(R.string.gate_text, FREE_LIMIT[op] ?: 0, count)
 
     /** Shows a rewarded ad; runs [onGranted] if earned, or right away if no ad is available. */
     fun showRewarded(activity: Activity, onGranted: () -> Unit) {

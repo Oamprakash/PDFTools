@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import android.net.Uri
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
@@ -33,9 +35,9 @@ fun JobStatus(info: WorkInfo?) {
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow), border = cardBorder
         ) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Working on it…", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.working), style = MaterialTheme.typography.titleSmall)
                 LinearProgressIndicator(Modifier.fillMaxWidth())
-                Hint(info.progress.getString(PdfWorker.STEP) ?: "You can leave this screen. It keeps going in the background.")
+                Hint(info.progress.getString(PdfWorker.STEP) ?: stringResource(R.string.working_hint))
             }
         }
         }
@@ -50,31 +52,31 @@ fun JobStatus(info: WorkInfo?) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Icon(Icons.Outlined.CheckCircle, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
                         Column {
-                            Text(if (outs.size > 1) "${outs.size} files saved" else "Saved", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Text(sizeChange(d.getLong(PdfWorker.IN_SIZE, 0), d.getLong(PdfWorker.OUT_SIZE, 0)), style = MaterialTheme.typography.bodyMedium)
+                            Text(if (outs.size > 1) pluralRes(R.plurals.files_saved, outs.size) else stringResource(R.string.saved), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Text(ctx.sizeChange(d.getLong(PdfWorker.IN_SIZE, 0), d.getLong(PdfWorker.OUT_SIZE, 0)), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                     val tKb = d.getInt(PdfWorker.TARGET_KB, 0)
                     if (tKb > 0) {
                         val hit = d.getBoolean(PdfWorker.HIT, false)
                         Hint(
-                            if (hit) "Under ${kbLabel(tKb)} ✓"
-                            else if (d.getBoolean(PdfWorker.ALLOW_RASTER, false)) "Couldn't reach ${kbLabel(tKb)}. This is the smallest readable size."
-                            else "Couldn't reach ${kbLabel(tKb)} without losing quality. Tick \"Allow lower quality\" to go further.",
+                            if (hit) stringResource(R.string.under_target, kbLabel(tKb))
+                            else if (d.getBoolean(PdfWorker.ALLOW_RASTER, false)) stringResource(R.string.cant_reach_readable, kbLabel(tKb))
+                            else stringResource(R.string.cant_reach_quality, kbLabel(tKb)),
                             error = !hit
                         )
                     }
-                    if (d.getBoolean(PdfWorker.RASTER, false)) Hint("Pages were converted to images to reach this size, so text can't be selected.")
+                    if (d.getBoolean(PdfWorker.RASTER, false)) Hint(stringResource(R.string.raster_note))
                     // Equal widths, tighter padding and single-line labels so "WhatsApp" never wraps on narrow phones
                     val pad = PaddingValues(horizontal = 8.dp, vertical = 10.dp)
                     @Composable fun Label(t: String) = Text(t, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button({ ctx.sharePdfs(outs, mime = mime) }, Modifier.weight(1f), contentPadding = pad) { Label("Share") }
+                        Button({ ctx.sharePdfs(outs, mime = mime) }, Modifier.weight(1f), contentPadding = pad) { Label(stringResource(R.string.share)) }
                         FilledTonalButton({ ctx.sharePdfs(outs, "com.whatsapp", mime) }, Modifier.weight(1f), contentPadding = pad) { Label("WhatsApp") }
-                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0], mime) }, Modifier.weight(1f), contentPadding = pad) { Label("Open") }
+                        if (outs.size == 1) OutlinedButton({ ctx.openPdf(outs[0], mime) }, Modifier.weight(1f), contentPadding = pad) { Label(stringResource(R.string.open)) }
                     }
                     if (mime == "application/pdf" && outs.size == 1) {
-                        Text("Do more with this file", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.do_more), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(PdfWorker.COMPRESS, PdfWorker.PROTECT, PdfWorker.MERGE, PdfWorker.SPLIT, PdfWorker.TO_IMAGE).forEach { op ->
                                 val s = toolStyle(op)
@@ -89,7 +91,7 @@ fun JobStatus(info: WorkInfo?) {
         WorkInfo.State.FAILED -> Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Text("Couldn't finish: ${info.outputData.getString("err") ?: "unknown error"}", color = MaterialTheme.colorScheme.onErrorContainer)
+                Text(stringResource(R.string.couldnt_finish, info.outputData.getString("err") ?: stringResource(R.string.unknown_error)), color = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
         else -> {}

@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,7 +21,7 @@ import com.oamsapps.pdfzy.work.PdfWorker
 fun OpenWithScreen(open: (String) -> Unit, back: () -> Unit) {
     val ctx = LocalContext.current
     val meta = remember { Incoming.uris.firstOrNull()?.let(ctx::fileMeta) }
-    ToolLayout("What do you want to do?", back) {
+    ToolLayout(stringResource(R.string.what_to_do), back) {
         meta?.let { FileRow(it.first, it.second.kb()) }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
             items(listOf(PdfWorker.COMPRESS, PdfWorker.PROTECT, PdfWorker.SPLIT, PdfWorker.EXTRACT, PdfWorker.ROTATE,
@@ -29,7 +31,7 @@ fun OpenWithScreen(open: (String) -> Unit, back: () -> Unit) {
                         ToolIcon(op, 40.dp)
                         Column(Modifier.weight(1f)) {
                             Text(label(op), style = MaterialTheme.typography.titleSmall)
-                            Text(toolStyle(op).desc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(stringResource(toolStyle(op).desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }

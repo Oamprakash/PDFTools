@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import com.oamsapps.pdfzy.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RotateLeft
 import androidx.compose.material.icons.outlined.RotateRight
@@ -23,7 +25,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.oamsapps.pdfzy.Incoming
 import com.oamsapps.pdfzy.outputName
-import com.oamsapps.pdfzy.plural
 import com.oamsapps.pdfzy.ads.Ads
 import com.oamsapps.pdfzy.ads.rememberRewardGate
 import com.oamsapps.pdfzy.pdf.PdfThumbs
@@ -75,42 +76,42 @@ fun PageGridScreen(op: String, back: () -> Unit) {
     }
 
     ToolLayout(op, back,
-        actions = { if (src != null) TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text("Change file") } },
+        actions = { if (src != null) TextButton({ pick.launch(arrayOf("application/pdf")) }) { Text(stringResource(R.string.change_file)) } },
         bottom = {
             val busy = info?.state == WorkInfo.State.RUNNING
-            if (src == null) Button({ pick.launch(arrayOf("application/pdf")) }, Modifier.weight(1f)) { Text("Select PDF") }
+            if (src == null) Button({ pick.launch(arrayOf("application/pdf")) }, Modifier.weight(1f)) { Text(stringResource(R.string.select_pdf)) }
             else if (isImage) Button({
                 val n = if (sel.isEmpty()) thumbs?.count ?: 0 else sel.size
-                gate(Ads.needsReward(op, n), Ads.gateText(op, n)) { folder.launch(null) }
+                gate(Ads.needsReward(op, n), Ads.gateText(ctx, op, n)) { folder.launch(null) }
             }, Modifier.weight(1f), enabled = thumbs != null && !busy) {
-                Text(if (sel.isEmpty()) "Export all pages" else "Export ${plural(sel.size, "page")}")
+                Text(if (sel.isEmpty()) stringResource(R.string.export_all) else pluralRes(R.plurals.export_n, sel.size))
             } else {
                 if (isRotate) {
-                    FilledTonalIconButton({ turn(-90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateLeft, "Rotate left") }
-                    FilledTonalIconButton({ turn(90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateRight, "Rotate right") }
+                    FilledTonalIconButton({ turn(-90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateLeft, stringResource(R.string.rotate_left)) }
+                    FilledTonalIconButton({ turn(90) }, enabled = thumbs != null) { Icon(Icons.Outlined.RotateRight, stringResource(R.string.rotate_right)) }
                 }
                 val ready = if (isRotate) rot.isNotEmpty() else sel.isNotEmpty()
                 Button({ save.launch(ctx.outputName(op, listOfNotNull(src))) }, Modifier.weight(1f),
-                    enabled = ready && !busy) { Text("Save PDF") }
+                    enabled = ready && !busy) { Text(stringResource(R.string.save_pdf)) }
             }
         }) {
         JobStatus(info)
         when {
-            src == null -> EmptyState(op, "Pick a PDF", "You'll see all its pages here.")
-            thumbs == null -> Hint("Can't open this PDF. If it's password-protected, use Unlock first.", error = true)
+            src == null -> EmptyState(op, stringResource(R.string.empty_grid_t), stringResource(R.string.empty_grid_h))
+            thumbs == null -> Hint(stringResource(R.string.cant_open_pdf), error = true)
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (isImage && sel.isEmpty()) "All ${plural(thumbs.count, "page")}" else "${sel.size} of ${thumbs.count} selected",
+                    Text(if (isImage && sel.isEmpty()) pluralRes(R.plurals.all_n_pages, thumbs.count) else stringResource(R.string.n_of_m_selected, sel.size, thumbs.count),
                         Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    TextButton({ sel.clear(); sel += 0 until thumbs.count }) { Text("All") }
-                    TextButton({ sel.clear() }) { Text("None") }
+                    TextButton({ sel.clear(); sel += 0 until thumbs.count }) { Text(stringResource(R.string.all)) }
+                    TextButton({ sel.clear() }) { Text(stringResource(R.string.none)) }
                 }
                 when (op) {
-                    PdfWorker.EXTRACT -> Hint("Tap the pages to keep. They'll be saved as a new PDF.")
-                    PdfWorker.ROTATE -> Hint("Tap pages, then rotate. With nothing selected, all pages rotate.")
+                    PdfWorker.EXTRACT -> Hint(stringResource(R.string.hint_extract))
+                    PdfWorker.ROTATE -> Hint(stringResource(R.string.hint_rotate))
                     else -> Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         AppChip(!png, { png = false }, { Text("JPG") }); AppChip(png, { png = true }, { Text("PNG") })
-                        AppChip(!hiRes, { hiRes = false }, { Text("Standard") }); AppChip(hiRes, { hiRes = true }, { Text("High quality") })
+                        AppChip(!hiRes, { hiRes = false }, { Text(stringResource(R.string.quality_standard)) }); AppChip(hiRes, { hiRes = true }, { Text(stringResource(R.string.quality_high)) })
                     }
                 }
                 LazyVerticalGrid(GridCells.Adaptive(104.dp), Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp),
@@ -132,7 +133,7 @@ private fun PageThumb(thumbs: PdfThumbs, i: Int, selected: Boolean, deg: Int, on
         modifier = Modifier.clip(MaterialTheme.shapes.small).border(if (selected) 2.dp else 1.dp, border, MaterialTheme.shapes.small)
             .background(MaterialTheme.colorScheme.surfaceContainerLow).clickable(onClick = onClick).padding(6.dp)) {
         Box(Modifier.size(92.dp), contentAlignment = Alignment.Center) {
-            bmp?.let { Image(it.asImageBitmap(), "Page ${i + 1}", Modifier.fillMaxSize().rotate(deg.toFloat())) }
+            bmp?.let { Image(it.asImageBitmap(), stringResource(R.string.page_n, i + 1), Modifier.fillMaxSize().rotate(deg.toFloat())) }
                 ?: CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
         }
         Text(if (selected) "✓ ${i + 1}" else "${i + 1}", style = MaterialTheme.typography.labelMedium)

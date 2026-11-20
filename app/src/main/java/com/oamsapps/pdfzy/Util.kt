@@ -30,8 +30,8 @@ fun Context.sharePdfs(uris: List<Uri>, pkg: String? = null, mime: String = "appl
 fun Long.kb() = if (this >= 1_048_576) "%.1f MB".format(this / 1_048_576f) else "${this / 1024} KB"
 
 /** "4.8 MB → 420 KB (91% smaller)" */
-fun sizeChange(before: Long, after: Long) =
-    if (before > 0 && after in 1 until before) "${before.kb()} → ${after.kb()} (${100 - after * 100 / before}% smaller)"
+fun Context.sizeChange(before: Long, after: Long) =
+    if (before > 0 && after in 1 until before) getString(R.string.size_change, before.kb(), after.kb(), (100 - after * 100 / before).toInt())
     else after.kb()
 
 fun kbLabel(kb: Int) = if (kb >= 1000 && kb % 1000 == 0) "${kb / 1000} MB" else "$kb KB"
