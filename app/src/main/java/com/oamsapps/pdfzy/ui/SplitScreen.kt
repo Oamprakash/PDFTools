@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import com.oamsapps.pdfzy.R
 import androidx.compose.ui.res.stringResource
 import android.content.Intent
@@ -39,7 +41,14 @@ fun SplitScreen(back: () -> Unit) {
     val ctx = LocalContext.current
     var src by remember { mutableStateOf(Incoming.uris.firstOrNull()) }
     val name = remember(src) { src?.let { ctx.fileMeta(it).first } }
-    val count = remember(src) { src?.let { u -> runCatching { PdfThumbs(ctx, u).use { it.count } }.getOrNull() } }
+    val countState = remember(src) { mutableStateOf<Int?>(null) }
+    var openFailed by remember(src) { mutableStateOf(false) }
+    LaunchedEffect(src) {
+        val u = src ?: return@LaunchedEffect
+        val c = withContext(Dispatchers.IO) { runCatching { PdfThumbs(ctx, u).use { it.count } }.getOrNull() }
+        if (c == null) openFailed = true else countState.value = c
+    }
+    val count = countState.value
     var every by remember { mutableStateOf(true) }
     var n by remember { mutableStateOf("1") }
     var custom by remember { mutableStateOf("") }
@@ -70,10 +79,13 @@ fun SplitScreen(back: () -> Unit) {
             else Button({ val n = ranges?.size ?: 0; gate(Ads.needsReward(PdfWorker.SPLIT, n), Ads.gateText(ctx, PdfWorker.SPLIT, n)) { folder.launch(null) } },
                 Modifier.weight(1f), enabled = ranges != null && info?.state != WorkInfo.State.RUNNING) { Text(stringResource(R.string.choose_folder_split)) }
         }) {
-        JobStatus(info)
+        JobStatus(info) { workId = it }
         when {
             src == null -> EmptyState(PdfWorker.SPLIT, stringResource(R.string.empty_split_t), stringResource(R.string.empty_split_h))
-            count == null -> Hint(stringResource(R.string.cant_open_pdf), error = true)
+            openFailed -> CantOpenPdf(src)
+            count == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp); Hint(stringResource(R.string.checking_file))
+            }
             else -> {
                 FileRow(name.orEmpty(), pluralRes(R.plurals.pages_count, count))
                 SectionTitle(stringResource(R.string.split_by))

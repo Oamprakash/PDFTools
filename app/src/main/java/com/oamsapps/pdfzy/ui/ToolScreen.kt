@@ -85,7 +85,7 @@ fun ToolScreen(op: String, back: () -> Unit) {
             Modifier.weight(1f), enabled = items.size >= minItems && (!isPw || password != null) && state != WorkInfo.State.RUNNING) { Text(actionLabel(op)) }
     }) {
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-            item { JobStatus(info) } // result first, so it's visible without scrolling
+            item { JobStatus(info) { workId = it } } // result first, so it's visible without scrolling
             if (items.isEmpty()) item { EmptyState(op, emptyTitle, emptyHint) }
             itemsIndexed(items) { i, u ->
                 val meta = remember(u) { ctx.fileMeta(u) }

@@ -1,5 +1,7 @@
 package com.oamsapps.pdfzy.ui
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import com.oamsapps.pdfzy.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
@@ -41,7 +43,15 @@ fun PageGridScreen(op: String, back: () -> Unit) {
     var png by remember { mutableStateOf(false) }
     var hiRes by remember { mutableStateOf(false) }
     var src by remember { mutableStateOf(Incoming.uris.firstOrNull()) }
-    val thumbs = remember(src) { src?.let { runCatching { PdfThumbs(ctx, it) }.getOrNull() } }
+    // Open the PDF off the main thread: a big file would otherwise freeze the screen
+    val thumbsState = remember(src) { mutableStateOf<PdfThumbs?>(null) }
+    var openFailed by remember(src) { mutableStateOf(false) }
+    LaunchedEffect(src) {
+        val u = src ?: return@LaunchedEffect
+        val t = withContext(Dispatchers.IO) { runCatching { PdfThumbs(ctx, u) }.getOrNull() }
+        if (t == null) openFailed = true else thumbsState.value = t
+    }
+    val thumbs = thumbsState.value
     DisposableEffect(thumbs) { onDispose { thumbs?.close() } }
     val sel = remember(src) { mutableStateListOf<Int>() }
     val rot = remember(src) { mutableStateMapOf<Int, Int>() }
@@ -95,10 +105,11 @@ fun PageGridScreen(op: String, back: () -> Unit) {
                     enabled = ready && !busy) { Text(stringResource(R.string.save_pdf)) }
             }
         }) {
-        JobStatus(info)
+        JobStatus(info) { workId = it }
         when {
             src == null -> EmptyState(op, stringResource(R.string.empty_grid_t), stringResource(R.string.empty_grid_h))
-            thumbs == null -> Hint(stringResource(R.string.cant_open_pdf), error = true)
+            openFailed -> CantOpenPdf(src)
+            thumbs == null -> SkeletonPageGrid(Modifier.weight(1f))
             else -> {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(if (isImage && sel.isEmpty()) pluralRes(R.plurals.all_n_pages, thumbs.count) else stringResource(R.string.n_of_m_selected, sel.size, thumbs.count),

@@ -172,4 +172,15 @@
     <plurals name="all_n_pages"><item quantity="one">All %d page</item><item quantity="other">All %d pages</item></plurals>
     <plurals name="will_create"><item quantity="one">Will create %d file</item><item quantity="other">Will create %d files</item></plurals>
     <plurals name="notif_files_ready"><item quantity="one">%d file ready</item><item quantity="other">%d files ready</item></plurals>
+    <string name="err_wrong_password">Wrong password. Check it and try again.</string>
+    <string name="err_encrypted">This PDF is password-protected. Unlock it first.</string>
+    <string name="err_damaged">This file looks damaged or isn\'t a supported PDF.</string>
+    <string name="err_no_space">Not enough storage space. Free up some space and try again.</string>
+    <string name="err_too_large">This file is too large for this phone\'s memory. Try a smaller file or split it first.</string>
+    <string name="err_not_found">The file can\'t be read. It may have been moved or deleted.</string>
+    <string name="err_session">The app was closed before this finished. Please start again.</string>
+    <string name="err_unknown">Something went wrong. Please try again.</string>
+    <string name="retry">Retry</string>
+    <string name="unlock_it">Unlock it</string>
+    <string name="cancelled">Cancelled</string>
 </resources>

@@ -21,11 +21,12 @@ import androidx.compose.ui.unit.dp
 import androidx.work.WorkInfo
 import com.oamsapps.pdfzy.*
 import com.oamsapps.pdfzy.ads.Ads
+import com.oamsapps.pdfzy.pdf.PdfError
 import com.oamsapps.pdfzy.work.PdfWorker
 
 /** Progress / result / error card. The result suggests a next step to keep the user moving. */
 @Composable
-fun JobStatus(info: WorkInfo?) {
+fun JobStatus(info: WorkInfo?, onRetry: (java.util.UUID) -> Unit = {}) {
     val ctx = LocalContext.current
     val nav = LocalNavigate.current
     when (info?.state) {
@@ -38,6 +39,7 @@ fun JobStatus(info: WorkInfo?) {
                 Text(stringResource(R.string.working), style = MaterialTheme.typography.titleSmall)
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Hint(info.progress.getString(PdfWorker.STEP) ?: stringResource(R.string.working_hint))
+                TextButton({ PdfWorker.cancel(ctx, info.id) }, Modifier.align(Alignment.End)) { Text(stringResource(R.string.cancel)) }
             }
         }
         }
@@ -88,12 +90,33 @@ fun JobStatus(info: WorkInfo?) {
                 }
             }
         }
-        WorkInfo.State.FAILED -> Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.onErrorContainer)
-                Text(stringResource(R.string.couldnt_finish, info.outputData.getString("err") ?: stringResource(R.string.unknown_error)), color = MaterialTheme.colorScheme.onErrorContainer)
+        WorkInfo.State.FAILED -> {
+            val d = info.outputData
+            val code = d.getString(PdfWorker.ERR_CODE) ?: PdfError.UNKNOWN
+            val ins = d.getStringArray(PdfWorker.IN).orEmpty().map(Uri::parse)
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.ErrorOutline, null, tint = MaterialTheme.colorScheme.onErrorContainer)
+                        Text(stringResource(when (code) {
+                            PdfError.WRONG_PASSWORD -> R.string.err_wrong_password; PdfError.ENCRYPTED -> R.string.err_encrypted
+                            PdfError.DAMAGED -> R.string.err_damaged; PdfError.NO_SPACE -> R.string.err_no_space
+                            PdfError.TOO_LARGE -> R.string.err_too_large; PdfError.NOT_FOUND -> R.string.err_not_found
+                            PdfError.SESSION -> R.string.err_session; else -> R.string.err_unknown
+                        }), color = MaterialTheme.colorScheme.onErrorContainer)
+                    }
+                    Row(Modifier.align(Alignment.End), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (code == PdfError.ENCRYPTED && ins.isNotEmpty())
+                            OutlinedButton({ Incoming.uris = ins.take(1); nav(PdfWorker.UNLOCK) }) { Text(stringResource(R.string.unlock_it)) }
+                        // Retry makes no sense when the input itself is the problem or a password must be re-entered
+                        if (code !in setOf(PdfError.WRONG_PASSWORD, PdfError.ENCRYPTED, PdfError.DAMAGED, PdfError.SESSION, PdfError.NOT_FOUND)
+                            && PdfWorker.canRetry(info.id))
+                            Button({ PdfWorker.retry(ctx, info.id)?.let(onRetry) }) { Text(stringResource(R.string.retry)) }
+                    }
+                }
             }
         }
+        WorkInfo.State.CANCELLED -> Hint(stringResource(R.string.cancelled))
         else -> {}
     }
 }

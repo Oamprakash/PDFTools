@@ -52,7 +52,7 @@ fun IdCardScreen(back: () -> Unit) {
         Button({ save.launch(ctx.outputName(PdfWorker.ID_CARD, emptyList())) }, Modifier.weight(1f),
             enabled = front != null && info?.state != WorkInfo.State.RUNNING) { Text(stringResource(R.string.act_create)) }
     }) {
-        JobStatus(info)
+        JobStatus(info) { workId = it }
         Hint(stringResource(R.string.id_hint))
         CardSlot(stringResource(R.string.front), front, scanFront) { front = null }
         CardSlot(stringResource(R.string.back_optional), rear, scanBack) { rear = null }
@@ -70,7 +70,8 @@ private fun CardSlot(label: String, uri: Uri?, scan: () -> Unit, clear: () -> Un
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(96.dp, 61.dp).border(1.dp, MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) {
                 bmp?.let { Image(it.asImageBitmap(), label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
-                    ?: Text(label.substringBefore(' '), style = MaterialTheme.typography.labelSmall)
+                    ?: if (uri != null) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) // preview loading
+                    else Text(label.substringBefore(' '), style = MaterialTheme.typography.labelSmall)
             }
             Column(Modifier.weight(1f)) {
                 Text(label, style = MaterialTheme.typography.titleSmall)

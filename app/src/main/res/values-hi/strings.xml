@@ -171,4 +171,15 @@
     <plurals name="all_n_pages"><item quantity="one">सभी %d पेज</item><item quantity="other">सभी %d पेज</item></plurals>
     <plurals name="will_create"><item quantity="one">%d फ़ाइल बनेगी</item><item quantity="other">%d फ़ाइलें बनेंगी</item></plurals>
     <plurals name="notif_files_ready"><item quantity="one">%d फ़ाइल तैयार</item><item quantity="other">%d फ़ाइलें तैयार</item></plurals>
+    <string name="err_wrong_password">गलत पासवर्ड। जाँचकर दोबारा कोशिश करें।</string>
+    <string name="err_encrypted">इस PDF पर पासवर्ड है। पहले पासवर्ड हटाएँ।</string>
+    <string name="err_damaged">यह फ़ाइल खराब लगती है या सपोर्टेड PDF नहीं है।</string>
+    <string name="err_no_space">स्टोरेज में जगह नहीं है। कुछ जगह खाली करके दोबारा कोशिश करें।</string>
+    <string name="err_too_large">यह फ़ाइल इस फ़ोन की मेमोरी के लिए बहुत बड़ी है। छोटी फ़ाइल आज़माएँ या पहले उसे अलग करें।</string>
+    <string name="err_not_found">फ़ाइल पढ़ी नहीं जा सकी। शायद उसे हटाया या कहीं और ले जाया गया है।</string>
+    <string name="err_session">काम पूरा होने से पहले ऐप बंद हो गया। कृपया फिर से शुरू करें।</string>
+    <string name="err_unknown">कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।</string>
+    <string name="retry">दोबारा कोशिश करें</string>
+    <string name="unlock_it">पासवर्ड हटाएँ</string>
+    <string name="cancelled">रद्द किया गया</string>
 </resources>

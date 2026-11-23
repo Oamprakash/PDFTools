@@ -25,6 +25,31 @@ import com.tom_roush.pdfbox.pdmodel.graphics.image.PDImageXObject
 import java.io.File
 import java.util.zip.Deflater
 
+/** A failure the UI can explain in the user's language (codes map to err_* strings). */
+class PdfError(val code: String) : Exception(code) {
+    companion object {
+        const val WRONG_PASSWORD = "WRONG_PASSWORD"; const val ENCRYPTED = "ENCRYPTED"; const val DAMAGED = "DAMAGED"
+        const val NO_SPACE = "NO_SPACE"; const val TOO_LARGE = "TOO_LARGE"; const val NOT_FOUND = "NOT_FOUND"
+        const val SESSION = "SESSION"; const val UNKNOWN = "UNKNOWN"
+
+        /** Map any failure to a code (walks the cause chain). */
+        fun classify(t: Throwable): String {
+            var e: Throwable? = t
+            while (e != null) {
+                when {
+                    e is PdfError -> return e.code
+                    e is OutOfMemoryError -> return TOO_LARGE
+                    e is InvalidPasswordException -> return ENCRYPTED
+                    e is java.io.FileNotFoundException || e is SecurityException -> return NOT_FOUND
+                    e is java.io.IOException && (e.message?.contains("ENOSPC") == true || e.message?.contains("No space", true) == true) -> return NO_SPACE
+                }
+                e = e.cause.takeIf { it !== e }
+            }
+            return if (t is java.io.IOException) DAMAGED else UNKNOWN
+        }
+    }
+}
+
 /** All ops stream through temp files so big PDFs don't OOM on low-RAM phones. */
 class PdfOps(private val cr: ContentResolver, private val res: android.content.res.Resources? = null) {
     private val mem get() = MemoryUsageSetting.setupTempFileOnly()
@@ -102,7 +127,7 @@ class PdfOps(private val cr: ContentResolver, private val res: android.content.r
     /** Removes the password (blank works for PDFs that only restrict editing/printing). */
     fun unlock(src: Uri, out: Uri, password: String) {
         val d = try { cr.openInputStream(src)!!.use { PDDocument.load(it, password, mem) } }
-                catch (e: InvalidPasswordException) { throw IllegalArgumentException(res?.getString(R.string.wrong_password) ?: "Wrong password") }
+                catch (e: InvalidPasswordException) { throw PdfError(PdfError.WRONG_PASSWORD) }
         d.use { it.isAllSecurityToBeRemoved = true; save(it, out) }
     }
 

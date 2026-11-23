@@ -1,5 +1,9 @@
 package com.oamsapps.pdfzy.ui
 
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.*
 import androidx.compose.ui.platform.LocalContext
 import com.oamsapps.pdfzy.R
 import androidx.compose.ui.res.stringResource
@@ -153,3 +157,53 @@ fun FileRow(name: String, sub: String?, image: Boolean = false,
             onRemove?.let { IconButton(it) { Icon(Icons.Outlined.Close, stringResource(R.string.remove)) } }
         }
     }
+
+
+/** Pulsing grey placeholder while content loads. */
+@Composable
+fun skeletonAlpha(): Float {
+    val a by rememberInfiniteTransition(label = "skeleton").animateFloat(
+        0.45f, 1f, infiniteRepeatable(tween(800), RepeatMode.Reverse), label = "alpha")
+    return a
+}
+
+@Composable
+private fun Bar(w: Float, h: Dp) = Box(Modifier.fillMaxWidth(w).height(h).clip(RoundedCornerShape(4.dp))
+    .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
+
+/** Placeholder shaped like a file row (Recent list). */
+@Composable
+fun SkeletonRow() {
+    val a = skeletonAlpha()
+    Surface(shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.surfaceContainerLow, border = cardBorder,
+        modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = a }) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(40.dp).clip(RoundedCornerShape(11.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) { Bar(0.7f, 12.dp); Bar(0.4f, 10.dp) }
+        }
+    }
+}
+
+/** Placeholder page grid while a PDF opens. */
+@Composable
+fun SkeletonPageGrid(modifier: Modifier = Modifier) {
+    val a = skeletonAlpha()
+    LazyVerticalGrid(GridCells.Adaptive(104.dp), modifier.graphicsLayer { alpha = a }, userScrollEnabled = false,
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(9) {
+            Box(Modifier.height(124.dp).clip(MaterialTheme.shapes.small).background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)))
+        }
+    }
+}
+
+/** "Can't open this PDF" with a one-tap route to Unlock (the usual cause is a password). */
+@Composable
+fun CantOpenPdf(uri: android.net.Uri?) {
+    val nav = LocalNavigate.current
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Hint(stringResource(R.string.cant_open_pdf), error = true)
+        if (uri != null) OutlinedButton({ com.oamsapps.pdfzy.Incoming.uris = listOf(uri); nav(PdfWorker.UNLOCK) }) {
+            Text(stringResource(R.string.unlock_it))
+        }
+    }
+}

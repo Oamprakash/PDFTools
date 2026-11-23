@@ -17,6 +17,7 @@ import com.oamsapps.pdfzy.kb
 import com.oamsapps.pdfzy.Secrets
 import com.oamsapps.pdfzy.data.Recent
 import com.oamsapps.pdfzy.fileMeta
+import com.oamsapps.pdfzy.pdf.PdfError
 import com.oamsapps.pdfzy.pdf.PdfOps
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -44,6 +45,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                     else {
                         // 1 KB = 1000 bytes here: stays under the limit whether a portal counts 1000 or 1024
                         val r = ops.compressToTarget(ins[0], out, kb * 1000L, File(applicationContext.cacheDir, "compress"), allowRaster) {
+                            if (isStopped) throw kotlinx.coroutines.CancellationException() // Cancel between passes
                             setProgressAsync(workDataOf(STEP to it))
                         }
                         extra = workDataOf(TARGET_KB to kb, ALLOW_RASTER to allowRaster, HIT to r.hit, RASTER to (r.mode == PdfOps.Mode.RASTER))
@@ -74,10 +76,13 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
                 IN_SIZE to if (op == TO_IMAGE) 0L else ins.sumOf { applicationContext.fileMeta(it).second }, OUT_SIZE to outSize,
                 OUTS to outs.take(50).map(Uri::toString).toTypedArray() // Data is capped at 10 KB
             )).build()
-        }.fold({ Result.success(it) }, { Result.failure(workDataOf("err" to it.message)) })
+        }.fold({ Result.success(it) }, {
+            android.util.Log.e("PdfWorker", "$op failed", it)
+            Result.failure(workDataOf("err" to it.message, ERR_CODE to PdfError.classify(it), IN to ins.map(Uri::toString).toTypedArray()))
+        })
     }
 
-    private fun password() = Secrets.take(inputData.getString(PW_KEY)) ?: error(applicationContext.getString(R.string.session_expired))
+    private fun password() = Secrets.take(inputData.getString(PW_KEY)) ?: throw PdfError(PdfError.SESSION)
     private fun foregroundInfo(op: String): ForegroundInfo {
         val nm = applicationContext.getSystemService(NotificationManager::class.java)
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CHANNEL) == null)
@@ -112,7 +117,7 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
     private fun ranges() = inputData.getIntArray(RANGES)!!.toList().chunked(2).map { it[0]..it[1] }
 
     companion object {
-        const val CHANNEL = "jobs"; const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val STEP = "step"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"; const val ALLOW_RASTER = "allowRaster"
+        const val ERR_CODE = "errCode"; const val CHANNEL = "jobs"; const val OP = "op"; const val IN = "in"; const val OUT = "out"; const val STEP = "step"; const val TARGET_KB = "targetKb"; const val HIT = "hit"; const val RASTER = "raster"; const val ALLOW_RASTER = "allowRaster"
         const val OUTS = "outs"; const val IN_SIZE = "inSize"; const val OUT_SIZE = "outSize"
         const val IMG = "Images to PDF"; const val MERGE = "Merge PDF"; const val SPLIT = "Split PDF"; const val COMPRESS = "Compress PDF"
         const val TO_IMAGE = "PDF to images"; const val DPI = "dpi"; const val PNG = "png"; const val MIME = "mime"
@@ -122,11 +127,20 @@ class PdfWorker(ctx: Context, p: WorkerParameters) : CoroutineWorker(ctx, p) {
         const val PAGES = "pages"; const val DEGS = "degs"; const val RANGES = "ranges"
 
         fun enqueue(ctx: Context, op: String, ins: List<Uri>, out: Uri, extra: Map<String, Any> = emptyMap()): UUID {
-            val req = OneTimeWorkRequestBuilder<PdfWorker>()
-                .setInputData(Data.Builder().putAll(extra).putAll(workDataOf(OP to op, IN to ins.map(Uri::toString).toTypedArray(), OUT to out.toString())).build())
-                .build() // TODO: setForeground() + notification for 100+ MB jobs
+            val data = Data.Builder().putAll(extra).putAll(workDataOf(OP to op, IN to ins.map(Uri::toString).toTypedArray(), OUT to out.toString())).build()
+            val req = OneTimeWorkRequestBuilder<PdfWorker>().setInputData(data).build()
             WorkManager.getInstance(ctx).enqueue(req)
+            lastInputs[req.id] = data
             return req.id
         }
+
+        // Inputs of jobs started in this process, so a failed job can be retried with one tap
+        private val lastInputs = java.util.concurrent.ConcurrentHashMap<UUID, Data>()
+        fun canRetry(id: UUID) = lastInputs.containsKey(id)
+        fun retry(ctx: Context, id: UUID): UUID? = lastInputs[id]?.let { data ->
+            val req = OneTimeWorkRequestBuilder<PdfWorker>().setInputData(data).build()
+            WorkManager.getInstance(ctx).enqueue(req); lastInputs[req.id] = data; req.id
+        }
+        fun cancel(ctx: Context, id: UUID) = WorkManager.getInstance(ctx).cancelWorkById(id)
     }
 }

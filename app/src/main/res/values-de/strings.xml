@@ -171,4 +171,15 @@
     <plurals name="all_n_pages"><item quantity="one">Alle %d Seite</item><item quantity="other">Alle %d Seiten</item></plurals>
     <plurals name="will_create"><item quantity="one">Erstellt %d Datei</item><item quantity="other">Erstellt %d Dateien</item></plurals>
     <plurals name="notif_files_ready"><item quantity="one">%d Datei fertig</item><item quantity="other">%d Dateien fertig</item></plurals>
+    <string name="err_wrong_password">Falsches Passwort. Bitte prüfen und erneut versuchen.</string>
+    <string name="err_encrypted">Dieses PDF ist passwortgeschützt. Entsperre es zuerst.</string>
+    <string name="err_damaged">Diese Datei scheint beschädigt oder kein unterstütztes PDF zu sein.</string>
+    <string name="err_no_space">Nicht genug Speicherplatz. Gib Speicher frei und versuche es erneut.</string>
+    <string name="err_too_large">Die Datei ist zu groß für den Speicher dieses Handys. Versuche eine kleinere Datei oder teile sie zuerst.</string>
+    <string name="err_not_found">Die Datei kann nicht gelesen werden. Sie wurde evtl. verschoben oder gelöscht.</string>
+    <string name="err_session">Die App wurde vorher geschlossen. Bitte starte erneut.</string>
+    <string name="err_unknown">Etwas ist schiefgelaufen. Bitte versuche es erneut.</string>
+    <string name="retry">Erneut versuchen</string>
+    <string name="unlock_it">Entsperren</string>
+    <string name="cancelled">Abgebrochen</string>
 </resources>

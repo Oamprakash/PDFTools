@@ -171,4 +171,15 @@
     <plurals name="all_n_pages"><item quantity="one">Toutes les pages (%d)</item><item quantity="other">Toutes les pages (%d)</item></plurals>
     <plurals name="will_create"><item quantity="one">Créera %d fichier</item><item quantity="other">Créera %d fichiers</item></plurals>
     <plurals name="notif_files_ready"><item quantity="one">%d fichier prêt</item><item quantity="other">%d fichiers prêts</item></plurals>
+    <string name="err_wrong_password">Mot de passe incorrect. Vérifiez-le et réessayez.</string>
+    <string name="err_encrypted">Ce PDF est protégé par mot de passe. Déverrouillez-le d\'abord.</string>
+    <string name="err_damaged">Ce fichier semble endommagé ou n\'est pas un PDF pris en charge.</string>
+    <string name="err_no_space">Espace de stockage insuffisant. Libérez de l\'espace et réessayez.</string>
+    <string name="err_too_large">Fichier trop volumineux pour la mémoire de ce téléphone. Essayez un fichier plus petit ou divisez-le d\'abord.</string>
+    <string name="err_not_found">Impossible de lire le fichier. Il a peut-être été déplacé ou supprimé.</string>
+    <string name="err_session">L\'appli a été fermée avant la fin. Veuillez recommencer.</string>
+    <string name="err_unknown">Un problème est survenu. Veuillez réessayer.</string>
+    <string name="retry">Réessayer</string>
+    <string name="unlock_it">Déverrouiller</string>
+    <string name="cancelled">Annulé</string>
 </resources>

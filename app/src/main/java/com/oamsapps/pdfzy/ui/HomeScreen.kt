@@ -69,7 +69,7 @@ fun HomeScreen(open: (String) -> Unit) {
             full { SectionTitle(stringResource(R.string.recent_files)) }
             val list = recents
             when {
-                list == null -> {}
+                list == null -> items(3, span = { GridItemSpan(maxLineSpan) }) { SkeletonRow() }
                 list.isEmpty() -> full { RecentEmpty() }
                 else -> items(list, key = { it.uri }, span = { GridItemSpan(maxLineSpan) }) { RecentRow(it) }
             }
