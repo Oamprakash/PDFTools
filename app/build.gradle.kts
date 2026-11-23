@@ -5,7 +5,7 @@ plugins {
 android {
     namespace = "com.oamsapps.pdfzy"; compileSdk = 35
     defaultConfig {
-        applicationId = "com.oamsapps.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 2; versionName = "1.0"
+        applicationId = "com.oamsapps.pdfzy"; minSdk = 24; targetSdk = 35; versionCode = 3; versionName = "1.0"
         // testAds flag lives in gradle.properties (true = Google test ads in release builds; false for production)
         buildConfigField("boolean", "TEST_ADS", (project.findProperty("testAds")?.toString()?.toBoolean() ?: false).toString())
     }

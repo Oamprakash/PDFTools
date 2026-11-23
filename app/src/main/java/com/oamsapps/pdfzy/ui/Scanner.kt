@@ -30,20 +30,28 @@ fun rememberScanner(pageLimit: Int? = null, onError: (String) -> Unit, onPages: 
     val pages by rememberUpdatedState(onPages)
     val err by rememberUpdatedState(onError)
     val launcher = rememberLauncherForActivityResult(StartIntentSenderForResult()) { r ->
-        if (r.resultCode == Activity.RESULT_OK)
+        if (r.resultCode == Activity.RESULT_OK) runCatching {
             GmsDocumentScanningResult.fromActivityResultIntent(r.data)?.pages?.map { it.imageUri }?.let(pages)
+        }.onFailure { android.util.Log.e("Scanner", "Reading scan result failed", it); err(ctx.getString(R.string.scanner_unavailable, it.message ?: "")) }
     }
     return remember(pageLimit) {
         {
-            val opts = GmsDocumentScannerOptions.Builder()
-                .setGalleryImportAllowed(true)
-                .setResultFormats(RESULT_FORMAT_JPEG)
-                .setScannerMode(SCANNER_MODE_FULL)
-                .apply { if (pageLimit != null) setPageLimit(pageLimit) }
-                .build()
-            GmsDocumentScanning.getClient(opts).getStartScanIntent(ctx.findActivity())
-                .addOnSuccessListener { launcher.launch(IntentSenderRequest.Builder(it).build()) }
-                .addOnFailureListener { err(ctx.getString(R.string.scanner_unavailable, it.message ?: "")) }
+            // Never let a scanner problem crash the app: show the reason instead (and log it for diagnosis)
+            fun fail(t: Throwable) {
+                android.util.Log.e("Scanner", "Scanner failed", t)
+                err(ctx.getString(R.string.scanner_unavailable, t.message ?: t.javaClass.simpleName))
+            }
+            try {
+                val opts = GmsDocumentScannerOptions.Builder()
+                    .setGalleryImportAllowed(true)
+                    .setResultFormats(RESULT_FORMAT_JPEG)
+                    .setScannerMode(SCANNER_MODE_FULL)
+                    .apply { if (pageLimit != null) setPageLimit(pageLimit) }
+                    .build()
+                GmsDocumentScanning.getClient(opts).getStartScanIntent(ctx.findActivity())
+                    .addOnSuccessListener { runCatching { launcher.launch(IntentSenderRequest.Builder(it).build()) }.onFailure(::fail) }
+                    .addOnFailureListener(::fail)
+            } catch (t: Throwable) { fail(t) }
         }
     }
 }
