@@ -50,7 +50,7 @@ fun rememberScanner(pageLimit: Int? = null, onError: (String) -> Unit, onPages: 
                     .build()
                 GmsDocumentScanning.getClient(opts).getStartScanIntent(ctx.findActivity())
                     .addOnSuccessListener { runCatching { launcher.launch(IntentSenderRequest.Builder(it).build()) }.onFailure(::fail) }
-                    .addOnFailureListener(::fail)
+                    .addOnFailureListener { fail(it) }
             } catch (t: Throwable) { fail(t) }
         }
     }
